@@ -10,7 +10,7 @@ local v7=0.6; -- DPI Reduction
 local v8=0.1; -- Assist Strength
 local v9=false; -- AimAssistToggle
 local v10=40; -- Aim FOV (px)
-local v11="Mouse"; -- Aim Mode
+local v11="Mouse"; -- Aim Mode (Restored)
 local v12="HumanoidRootPart"; -- Target Part
 local v13=false; -- TeamCheckToggle (This is now for team vs. team, not disabling certain teams)
 local v14=false; -- DeadCheckToggle
@@ -29,6 +29,7 @@ v16:AddToggle("AimAssistToggle",{Title="Aim Assist",Description="Toggle aim assi
 v16:AddSlider("IntensitySlider",{Title="DPI Reduction",Description="0 = cant move mouse",Default=60,Min=0,Max=300,Rounding=0,Callback=function(v19) v7=v19/100 ;end});
 v16:AddSlider("FollowSlider",{Title="Assist Strength",Description="Aim assist strength",Default=10,Min=1,Max=50,Rounding=0,Callback=function(v20) v8=v20/100 ;end});
 v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Description="Pixel radius of target (idk how to explain better)",Default=40,Min=1,Max=100,Rounding=0,Callback=function(v21) v10=v21;end});
+-- Aim Mode Dropdown (Restored)
 v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame","Mouse"},Default="Mouse",Callback=function(v22) v11=v22;end});
 v16:AddDropdown("TargetPartDropdown",{Title="Target Part",Values={"Head","HumanoidRootPart"},Default="HumanoidRootPart",Callback=function(v23) v12=v23;end});
 v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Description="Ignore players in your team (doesnt work in some game)",Default=false,Callback=function(v24) v13=v24;end}); -- Renamed for clarity
@@ -44,15 +45,21 @@ v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Co
 local function hasLineOfSight(part1, part2)
     local origin = part1.Position
     local direction = (part2.Position - origin).Unit
+    local distance = (part2.Position - origin).Magnitude
+
     local raycastParams = RaycastParams.new()
+    -- Exclude the local player's character and the target player's character from the raycast
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {v5.Character, part2.Parent}
-    local raycastResult = workspace:Raycast(origin, direction * 1000, raycastParams)
+
+    local raycastResult = workspace:Raycast(origin, direction * distance * 1.05, raycastParams) -- Cast slightly past the target to be safe
 
     if raycastResult then
-        return raycastResult.Instance == part2 or raycastResult.Instance.Parent == part2.Parent
+        -- If the raycast hit something, check if it was the target part or one of its descendants
+        return raycastResult.Instance == part2 or raycastResult.Instance:IsDescendantOf(part2.Parent)
     end
-    return false
+    -- If no hit, it means there's nothing in between, so there's line of sight
+    return true
 end
 
 local function v17()
@@ -82,7 +89,8 @@ local function v17()
             local v35,v36=v4:WorldToViewportPoint(v34.Position);
 
             if v36 then
-                if v48 and not hasLineOfSight(v4.CFrame.Position, v34) then
+                -- Only skip this target if wall check is enabled AND there is no line of sight
+                if v48 and not hasLineOfSight(v4.CFrame, v34) then
                     continue
                 end
 
@@ -103,11 +111,11 @@ v2.RenderStepped:Connect(function()
     if v9 then
         local v31=v17();
         if v31 then
-            v3.MouseDeltaSensitivity=v6 * v7 ;
-            if (v11=="CFrame") then
+            v3.MouseDeltaSensitivity=v6 * v7 ; -- This will still affect user's mouse input when mousemoverel is active
+            if (v11=="CFrame") then -- Check v11 to determine aim mode
                 local v41=(v31.Position-v4.CFrame.Position).Unit;
                 v4.CFrame=v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position,v4.CFrame.Position + v41 ),v8);
-            elseif (v11=="Mouse") then
+            elseif (v11=="Mouse") then -- Mouse mode logic restored
                 local v43,v44=v4:WorldToViewportPoint(v31.Position);
                 if v44 then
                     local v45=Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
