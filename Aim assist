@@ -21,6 +21,7 @@ local disableForChaosInsurgency = false;
 local disableForFoundationPersonnel = false;
 local disableForMobileTaskForces = false; -- Covers both MTF and Security Department
 local disableForGlobalOccultCoalition = false;
+local disableForSCP966 = false; -- <<< NEW VARIABLE FOR SCP-966 <<<
 
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
@@ -41,6 +42,8 @@ v16:AddToggle("ChaosInsurgencyToggle",{Title="Disable for Chaos Insurgency",Desc
 v16:AddToggle("FoundationPersonnelToggle",{Title="Disable for Foundation Personnel",Description="Turns off aim assist for Foundation Personnel members",Default=false,Callback=function(value) disableForFoundationPersonnel = value;end});
 v16:AddToggle("MobileTaskForcesToggle",{Title="Disable for Mobile Task Forces / Security Department",Description="Turns off aim assist for MTF and Security Department members",Default=false,Callback=function(value) disableForMobileTaskForces = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Description="Turns off aim assist for Global Occult Coalition members",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
+v16:AddToggle("SCP966Toggle",{Title="Disable for SCP-966",Description="Turns off aim assist for SCP-966",Default=false,Callback=function(value) disableForSCP966 = value;end}); -- <<< NEW TOGGLE FOR SCP-966 <<<
+
 
 -- Helper function to check line of sight
 local function hasLineOfSight(originPart, targetPart)
@@ -79,38 +82,41 @@ local function v17()
         if ((v30~=v5) and v30.Character and v30.Character:FindFirstChild(v12)) then
             local playerTeamName = v5.Team and v5.Team.Name or "";
             local targetTeamName = v30.Team and v30.Team.Name or "";
+            local targetCharacterName = v30.Character.Name; -- Get the character's name
 
             -- TeamCheckToggle (v13): if enabled, ignore players on the *exact same team* as the local player.
-            -- This correctly handles GOC vs GOC, MTF vs MTF, etc., if v13 is true.
             if v13 and (targetTeamName == playerTeamName) then
                 continue;
             end
 
             -- Check for aim assist disabling between *different* teams within Allied Group 1.
-            -- Player and target must both be in Group 1, but be on different specific teams.
             local playerInGroup1 = table.find(alliedGroup1, playerTeamName);
             local targetInGroup1 = table.find(alliedGroup1, targetTeamName);
             if playerInGroup1 and targetInGroup1 and (targetTeamName ~= playerTeamName) then
-                continue; -- Disable aim assist for allies within Group 1 (e.g., MTF player targeting Foundation Personnel)
+                continue;
             end
 
             -- Check for aim assist disabling between *different* teams within Allied Group 2.
-            -- Player and target must both be in Group 2, but be on different specific teams.
             local playerInGroup2 = table.find(alliedGroup2, playerTeamName);
             local targetInGroup2 = table.find(alliedGroup2, targetTeamName);
             if playerInGroup2 and targetInGroup2 and (targetTeamName ~= playerTeamName) then
-                continue; -- Disable aim assist for allies within Group 2 (e.g., Class-D player targeting Chaos Insurgency)
+                continue;
             end
 
             -- Individual team toggles: Disable aim assist if the *target's team* is specifically marked for disabling.
-            -- This takes precedence if one of these toggles is ON for the TARGET's team.
-            -- This includes GOC targets if 'disableForGlobalOccultCoalition' is true.
             if (disableForChaosInsurgency and targetTeamName == "Chaos Insurgency") or
                (disableForFoundationPersonnel and targetTeamName == "Foundation Personnel") or
                (disableForMobileTaskForces and (targetTeamName == "Mobile Task Forces" or targetTeamName == "Security Department")) or
                (disableForGlobalOccultCoalition and targetTeamName == "Global Occult Coalition") then
                 continue;
             end
+
+            -- <<< NEW SCP-966 CHECK INTEGRATION <<<
+            -- Check if the target is SCP-966 and the toggle is enabled
+            if disableForSCP966 and (targetCharacterName == "SCP-966") then
+                continue; -- Skip SCP-966 if the toggle is on
+            end
+            -- >>> END OF NEW SCP-966 CHECK INTEGRATION <<<
 
             -- DeadCheckToggle (v14): if enabled, ignore dead players.
             local v33=v30.Character:FindFirstChildOfClass("Humanoid");
@@ -122,7 +128,6 @@ local function v17()
 
             if v36 then -- If the target part is on screen
                 -- WallCheckToggle (v48): if enabled, ignore targets behind walls.
-                -- Crucially, this does NOT turn off aim assist entirely. It just skips this particular target.
                 if v48 and not hasLineOfSight(v4, v34) then
                     continue -- Skip target if behind a wall and wall check is enabled
                 end
@@ -174,102 +179,5 @@ v2.RenderStepped:Connect(function()
         end
     else
         v3.MouseDeltaSensitivity=v6; -- Reset DPI if AimAssistToggle is OFF
-    end
-end);
-v16:AddToggle("WallCheckToggle",{Title="Wall Check",Description="Disable aim assist if target is behind a wall",Default=false,Callback=function(value) v48=value;end});
-
--- New team toggles
-v16:AddToggle("ChaosInsurgencyToggle",{Title="Disable for Chaos Insurgency",Description="Turns off aim assist for Chaos Insurgency members",Default=false,Callback=function(value) disableForChaosInsurgency = value;end});
-v16:AddToggle("FoundationPersonnelToggle",{Title="Disable for Foundation Personnel",Description="Turns off aim assist for Foundation Personnel members",Default=false,Callback=function(value) disableForFoundationPersonnel = value;end});
-v16:AddToggle("MobileTaskForcesToggle",{Title="Disable for Mobile Task Forces / Security Department",Description="Turns off aim assist for MTF and Security Department members",Default=false,Callback=function(value) disableForMobileTaskForces = value;end});
-v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Description="Turns off aim assist for Global Occult Coalition members",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
-
-local function hasLineOfSight(part1, part2)
-    local origin = part1.Position
-    local direction = (part2.Position - origin).Unit
-    local distance = (part2.Position - origin).Magnitude
-
-    local raycastParams = RaycastParams.new()
-    -- Exclude the local player's character and the target player's character from the raycast
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {v5.Character, part2.Parent}
-
-    local raycastResult = workspace:Raycast(origin, direction * distance * 1.05, raycastParams) -- Cast slightly past the target to be safe
-
-    if raycastResult then
-        -- If the raycast hit something, check if it was the target part or one of its descendants
-        return raycastResult.Instance == part2 or raycastResult.Instance:IsDescendantOf(part2.Parent)
-    end
-    -- If no hit, it means there's nothing in between, so there's line of sight
-    return true
-end
-
-local function v17()
-    local v26 = nil;
-    local v27 = v10;
-    local v28 = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
-
-    for v29,v30 in ipairs(v1:GetPlayers()) do
-        if ((v30~=v5) and v30.Character and v30.Character:FindFirstChild(v12)) then
-            if (v13 and (v30.Team==v5.Team)) then continue;end
-
-            -- New team-based disabling logic
-            if v30.Team then
-                local teamName = v30.Team.Name
-                if (disableForChaosInsurgency and teamName == "Chaos Insurgency") or
-                   (disableForFoundationPersonnel and teamName == "Foundation Personnel") or
-                   (disableForMobileTaskForces and (teamName == "Mobile Task Forces" or teamName == "Security Department")) or
-                   (disableForGlobalOccultCoalition and teamName == "Global Occult Coalition") then
-                    continue -- Skip this player if their team is set to be disabled
-                end
-            end
-
-            local v33=v30.Character:FindFirstChildOfClass("Humanoid");
-            if (v14 and v33 and (v33.Health<=0)) then continue;end
-
-            local v34=v30.Character[v12];
-            local v35,v36=v4:WorldToViewportPoint(v34.Position);
-
-            if v36 then
-                -- Only skip this target if wall check is enabled AND there is no line of sight
-                if v48 and not hasLineOfSight(v4.CFrame, v34) then
-                    continue
-                end
-
-                local v39=Vector2.new(v35.X,v35.Y);
-                local v40=(v39-v28).Magnitude;
-
-                if (v40<v27) then
-                    v27=v40;
-                    v26=v34;
-                end
-            end
-        end
-    end
-    return v26;
-end
-
-v2.RenderStepped:Connect(function()
-    if v9 then
-        local v31=v17();
-        if v31 then
-            v3.MouseDeltaSensitivity=v6 * v7 ; -- This will still affect user's mouse input when mousemoverel is active
-            if (v11=="CFrame") then -- Check v11 to determine aim mode
-                local v41=(v31.Position-v4.CFrame.Position).Unit;
-                v4.CFrame=v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position,v4.CFrame.Position + v41 ),v8);
-            elseif (v11=="Mouse") then -- Mouse mode logic restored
-                local v43,v44=v4:WorldToViewportPoint(v31.Position);
-                if v44 then
-                    local v45=Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
-                    local v46=Vector2.new(v43.X,v43.Y);
-                    local v47=(v46-v45) * v8 ;
-                    mousemoverel(v47.X,v47.Y);
-                end
-            end
-        else
-            v3.MouseDeltaSensitivity=v6;
-        end
-    else
-        v3.MouseDeltaSensitivity=v6;
     end
 end);
