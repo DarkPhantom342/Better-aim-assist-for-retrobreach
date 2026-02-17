@@ -21,7 +21,7 @@ local disableForChaosInsurgency = false;
 local disableForFoundationPersonnel = false;
 local disableForMobileTaskForces = false; -- Covers both MTF and Security Department
 local disableForGlobalOccultCoalition = false;
-local disableForSCP966 = false; -- <<< NEW VARIABLE FOR SCP-966 <<<
+local disableForSCP966 = false; -- NEW VARIABLE FOR SCP-966
 
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
@@ -42,29 +42,43 @@ v16:AddToggle("ChaosInsurgencyToggle",{Title="Disable for Chaos Insurgency",Desc
 v16:AddToggle("FoundationPersonnelToggle",{Title="Disable for Foundation Personnel",Description="Turns off aim assist for Foundation Personnel members",Default=false,Callback=function(value) disableForFoundationPersonnel = value;end});
 v16:AddToggle("MobileTaskForcesToggle",{Title="Disable for Mobile Task Forces / Security Department",Description="Turns off aim assist for MTF and Security Department members",Default=false,Callback=function(value) disableForMobileTaskForces = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Description="Turns off aim assist for Global Occult Coalition members",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
-v16:AddToggle("SCP966Toggle",{Title="Disable for SCP-966",Description="Turns off aim assist for SCP-966",Default=false,Callback=function(value) disableForSCP966 = value;end}); -- <<< NEW TOGGLE FOR SCP-966 <<<
+v16:AddToggle("SCP966Toggle",{Title="Disable for SCP-966",Description="Turns off aim assist for SCP-966",Default=false,Callback=function(value) disableForSCP966 = value;end});
 
 
--- Helper function to check line of sight
-local function hasLineOfSight(originPart, targetPart)
-    local origin = originPart.Position
-    local direction = (targetPart.Position - origin).Unit
-    local distance = (targetPart.Position - origin).Magnitude
+-- Helper function to check line of sight (REVISED)
+local function hasLineOfSight(camera, targetPart)
+    local origin = camera.CFrame.Position
+    local targetPosition = targetPart.Position
+    local direction = (targetPosition - origin).Unit
+    local distance = (targetPosition - origin).Magnitude
 
     local raycastParams = RaycastParams.new()
-    -- Exclude the local player's character and the target player's character from the raycast
+    -- Only exclude the local player's character from the raycast
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {v5.Character, targetPart.Parent}
+    raycastParams.FilterDescendantsInstances = {v5.Character} 
 
-    local raycastResult = workspace:Raycast(origin, direction * distance * 1.05, raycastParams) -- Cast slightly past the target to be safe
+    -- Perform the raycast slightly past the target to ensure hits
+    local raycastResult = workspace:Raycast(origin, direction * (distance + 1), raycastParams)
 
     if raycastResult then
-        -- If the raycast hit something, check if it was the target part or one of its descendants
-        return raycastResult.Instance == targetPart or raycastResult.Instance:IsDescendantOf(targetPart.Parent)
+        local hitInstance = raycastResult.Instance
+        
+        -- If the raycast hit the targetPart itself or any part within the target's character model,
+        -- then there is a clear line of sight.
+        if hitInstance == targetPart or hitInstance:IsDescendantOf(targetPart.Parent) then
+            return true
+        else
+            -- If it hit something *else* (and that something else is not the local player),
+            -- then there is an obstruction.
+            return false
+        end
     end
-    -- If no hit, it means there's nothing in between, so there's line of sight
+    
+    -- If raycastResult is nil, it means the ray traveled its full path without hitting anything.
+    -- This implies a clear line of sight.
     return true
 end
+
 
 -- Main function to find the best target and determine aim assist status
 local function v17()
@@ -111,12 +125,11 @@ local function v17()
                 continue;
             end
 
-            -- <<< NEW SCP-966 CHECK INTEGRATION <<<
+            -- SCP-966 CHECK INTEGRATION
             -- Check if the target is SCP-966 and the toggle is enabled
             if disableForSCP966 and (targetCharacterName == "SCP-966") then
                 continue; -- Skip SCP-966 if the toggle is on
             end
-            -- >>> END OF NEW SCP-966 CHECK INTEGRATION <<<
 
             -- DeadCheckToggle (v14): if enabled, ignore dead players.
             local v33=v30.Character:FindFirstChildOfClass("Humanoid");
@@ -128,6 +141,7 @@ local function v17()
 
             if v36 then -- If the target part is on screen
                 -- WallCheckToggle (v48): if enabled, ignore targets behind walls.
+                -- This uses the REVISED hasLineOfSight function.
                 if v48 and not hasLineOfSight(v4, v34) then
                     continue -- Skip target if behind a wall and wall check is enabled
                 end
