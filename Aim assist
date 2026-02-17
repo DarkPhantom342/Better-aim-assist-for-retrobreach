@@ -16,7 +16,7 @@ local v13=false; -- TeamCheckToggle (This is now for team vs. team, not disablin
 local v14=false; -- DeadCheckToggle
 local v48=false; -- WallCheckToggle
 
--- New variables for team toggles
+-- New variables for individual team toggles
 local disableForChaosInsurgency = false;
 local disableForFoundationPersonnel = false;
 local disableForMobileTaskForces = false; -- Covers both MTF and Security Department
@@ -32,8 +32,150 @@ v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Description="Pixel radius of tar
 -- Aim Mode Dropdown (Restored)
 v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame","Mouse"},Default="Mouse",Callback=function(v22) v11=v22;end});
 v16:AddDropdown("TargetPartDropdown",{Title="Target Part",Values={"Head","HumanoidRootPart"},Default="HumanoidRootPart",Callback=function(v23) v12=v23;end});
-v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Description="Ignore players in your team (doesnt work in some game)",Default=false,Callback=function(v24) v13=v24;end}); -- Renamed for clarity
+v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Description="Ignore players in your team (doesnt work in some game)",Default=false,Callback=function(v24) v13=v24;end});
 v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Description="Ignore dead players",Default=false,Callback=function(v25) v14=v25;end});
+v16:AddToggle("WallCheckToggle",{Title="Wall Check",Description="Disable aim assist if target is behind a wall",Default=false,Callback=function(value) v48=value;end});
+
+-- New team toggles
+v16:AddToggle("ChaosInsurgencyToggle",{Title="Disable for Chaos Insurgency",Description="Turns off aim assist for Chaos Insurgency members",Default=false,Callback=function(value) disableForChaosInsurgency = value;end});
+v16:AddToggle("FoundationPersonnelToggle",{Title="Disable for Foundation Personnel",Description="Turns off aim assist for Foundation Personnel members",Default=false,Callback=function(value) disableForFoundationPersonnel = value;end});
+v16:AddToggle("MobileTaskForcesToggle",{Title="Disable for Mobile Task Forces / Security Department",Description="Turns off aim assist for MTF and Security Department members",Default=false,Callback=function(value) disableForMobileTaskForces = value;end});
+v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Description="Turns off aim assist for Global Occult Coalition members",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
+
+-- Helper function to check line of sight
+local function hasLineOfSight(originPart, targetPart)
+    local origin = originPart.Position
+    local direction = (targetPart.Position - origin).Unit
+    local distance = (targetPart.Position - origin).Magnitude
+
+    local raycastParams = RaycastParams.new()
+    -- Exclude the local player's character and the target player's character from the raycast
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {v5.Character, targetPart.Parent}
+
+    local raycastResult = workspace:Raycast(origin, direction * distance * 1.05, raycastParams) -- Cast slightly past the target to be safe
+
+    if raycastResult then
+        -- If the raycast hit something, check if it was the target part or one of its descendants
+        return raycastResult.Instance == targetPart or raycastResult.Instance:IsDescendantOf(targetPart.Parent)
+    end
+    -- If no hit, it means there's nothing in between, so there's line of sight
+    return true
+end
+
+-- Main function to find the best target and determine aim assist status
+local function v17()
+    local v26 = nil; -- Stores the best target part found
+    local v27 = v10; -- Current minimum FOV distance
+    local v28 = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 ); -- Center of the screen
+
+    -- Define the two main allied groups for cross-team aim assist disabling
+    local alliedGroup1 = {"Mobile Task Forces", "Foundation personnel", "Security Department"};
+    local alliedGroup2 = {"Class-D", "Chaos Insurgency"};
+    -- Global Occult Coalition is not part of these groups as per discussion.
+
+    for v29,v30 in ipairs(v1:GetPlayers()) do
+        -- Skip self and players without a character or target part
+        if ((v30~=v5) and v30.Character and v30.Character:FindFirstChild(v12)) then
+            local playerTeamName = v5.Team and v5.Team.Name or "";
+            local targetTeamName = v30.Team and v30.Team.Name or "";
+
+            -- TeamCheckToggle (v13): if enabled, ignore players on the *exact same team* as the local player.
+            -- This correctly handles GOC vs GOC, MTF vs MTF, etc., if v13 is true.
+            if v13 and (targetTeamName == playerTeamName) then
+                continue;
+            end
+
+            -- Check for aim assist disabling between *different* teams within Allied Group 1.
+            -- Player and target must both be in Group 1, but be on different specific teams.
+            local playerInGroup1 = table.find(alliedGroup1, playerTeamName);
+            local targetInGroup1 = table.find(alliedGroup1, targetTeamName);
+            if playerInGroup1 and targetInGroup1 and (targetTeamName ~= playerTeamName) then
+                continue; -- Disable aim assist for allies within Group 1 (e.g., MTF player targeting Foundation Personnel)
+            end
+
+            -- Check for aim assist disabling between *different* teams within Allied Group 2.
+            -- Player and target must both be in Group 2, but be on different specific teams.
+            local playerInGroup2 = table.find(alliedGroup2, playerTeamName);
+            local targetInGroup2 = table.find(alliedGroup2, targetTeamName);
+            if playerInGroup2 and targetInGroup2 and (targetTeamName ~= playerTeamName) then
+                continue; -- Disable aim assist for allies within Group 2 (e.g., Class-D player targeting Chaos Insurgency)
+            end
+
+            -- Individual team toggles: Disable aim assist if the *target's team* is specifically marked for disabling.
+            -- This takes precedence if one of these toggles is ON for the TARGET's team.
+            -- This includes GOC targets if 'disableForGlobalOccultCoalition' is true.
+            if (disableForChaosInsurgency and targetTeamName == "Chaos Insurgency") or
+               (disableForFoundationPersonnel and targetTeamName == "Foundation Personnel") or
+               (disableForMobileTaskForces and (targetTeamName == "Mobile Task Forces" or targetTeamName == "Security Department")) or
+               (disableForGlobalOccultCoalition and targetTeamName == "Global Occult Coalition") then
+                continue;
+            end
+
+            -- DeadCheckToggle (v14): if enabled, ignore dead players.
+            local v33=v30.Character:FindFirstChildOfClass("Humanoid");
+            if (v14 and v33 and (v33.Health<=0)) then continue;end
+
+            -- Get the target part and its screen position.
+            local v34=v30.Character[v12]; -- Target part (e.g., HumanoidRootPart)
+            local v35,v36=v4:WorldToViewportPoint(v34.Position); -- v35 is Vector3 screen position, v36 is isOnScreen boolean
+
+            if v36 then -- If the target part is on screen
+                -- WallCheckToggle (v48): if enabled, ignore targets behind walls.
+                -- Crucially, this does NOT turn off aim assist entirely. It just skips this particular target.
+                if v48 and not hasLineOfSight(v4, v34) then
+                    continue -- Skip target if behind a wall and wall check is enabled
+                end
+
+                -- Calculate distance from screen center to target part.
+                local v39=Vector2.new(v35.X,v35.Y);
+                local v40=(v39-v28).Magnitude;
+
+                -- If this target is within the FOV and closer than the current best target.
+                if (v40<v27) then
+                    v27=v40;
+                    v26=v34;
+                end
+            end
+        end
+    end
+    return v26; -- Return the best target found (or nil if none)
+end
+
+-- RenderStepped connection to execute aim assist logic every frame.
+v2.RenderStepped:Connect(function()
+    if v9 then -- If AimAssistToggle is ON
+        local v31=v17(); -- Get the best target based on all conditions
+        if v31 then -- If a valid target was found
+            v3.MouseDeltaSensitivity=v6 * v7 ; -- Apply DPI reduction
+            
+            if (v11=="CFrame") then -- Aim Mode: CFrame manipulation
+                local v41=(v31.Position-v4.CFrame.Position).Unit;
+                v4.CFrame=v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position,v4.CFrame.Position + v41 ),v8);
+            elseif (v11=="Mouse") then -- Aim Mode: Mouse movement simulation
+                local v43,v44=v4:WorldToViewportPoint(v31.Position);
+                if v44 then
+                    local v45=Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
+                    local v46=Vector2.new(v43.X,v43.Y);
+                    local v47=(v46-v45) * v8 ;
+                    
+                    -- IMPORTANT: 'mousemoverel' must be a defined function in your environment
+                    -- (e.g., provided by an external executor or custom implemented).
+                    if typeof(mousemoverel) == "function" then
+                        mousemoverel(v47.X,v47.Y);
+                    else
+                        -- print("Warning: mousemoverel function not found. Aim assist in 'Mouse' mode will not function.");
+                        -- Consider adding a fallback or user notification if this function is critical and missing.
+                    end
+                end
+            end
+        else
+            v3.MouseDeltaSensitivity=v6; -- Reset DPI if no target found
+        end
+    else
+        v3.MouseDeltaSensitivity=v6; -- Reset DPI if AimAssistToggle is OFF
+    end
+end);
 v16:AddToggle("WallCheckToggle",{Title="Wall Check",Description="Disable aim assist if target is behind a wall",Default=false,Callback=function(value) v48=value;end});
 
 -- New team toggles
