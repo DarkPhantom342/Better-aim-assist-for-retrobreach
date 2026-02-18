@@ -19,6 +19,7 @@ local disableForAlliedGroup1 = false; -- Covers MTF, Foundation Personnel, Secur
 local disableForAlliedGroup2 = false; -- Covers Class-D, Chaos Insurgency
 local disableForGlobalOccultCoalition = false;
 
+-- Fluent GUI setup
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
 
@@ -36,96 +37,109 @@ v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=f
 v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
 
+-- GUI Toggle Dot
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "GUIToggle"
+toggleGui.Parent = v5.PlayerGui
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 20, 0, 20) -- Small square button
+toggleButton.Position = UDim2.new(0, 5, 0, 5) -- Top-left corner
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green when visible (default)
+toggleButton.Text = "" -- No text as discussed for a minimalist dot
+toggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+toggleButton.BorderMode = Enum.BorderMode.Outline
+toggleButton.Parent = toggleGui
+
+local guiVisible = true -- Fluent GUI starts visible
+
+-- Function to toggle Fluent GUI visibility
+toggleButton.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    v15.Visible = guiVisible
+    -- Change dot color to reflect state (green when GUI is visible, red when hidden)
+    toggleButton.BackgroundColor3 = guiVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
+
+-- Ensure Fluent GUI starts visible
+v15.Visible = true
+
 
 -- Player count display setup
--- These variables hold references to the labels, but their parenting will be handled dynamically
-local playerCountDisplay = {
-    alliedGroup1 = Instance.new("TextLabel"),
-    alliedGroup2 = Instance.new("TextLabel"),
-    alliedGroup3 = Instance.new("TextLabel"), -- Serpent's Hand + SCP Team
-    goc = Instance.new("TextLabel")
-}
-
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PlayerCounterDisplay"
+-- These will be temporary instances used as templates. They are not parented here.
+local alliedGroup1LabelTemplate = Instance.new("TextLabel")
+local alliedGroup2LabelTemplate = Instance.new("TextLabel")
+local alliedGroup3LabelTemplate = Instance.new("TextLabel")
+local gocLabelTemplate = Instance.new("TextLabel")
 
 -- Function to set up the player counter GUI. This will be called on character spawn.
 local function setupPlayerCounterGui()
-    if v5.PlayerGui:FindFirstChild(screenGui.Name) then
-        v5.PlayerGui:FindFirstChild(screenGui.Name):Destroy() -- Clean up old GUI if it exists
+    -- Clean up old GUI if it exists in PlayerGui
+    local existingScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
+    if existingScreenGui then
+        existingScreenGui:Destroy()
     end
 
-    local newScreenGui = screenGui:Clone() -- Clone the template GUI
+    local newScreenGui = Instance.new("ScreenGui")
+    newScreenGui.Name = "PlayerCounterDisplay"
     newScreenGui.Parent = v5.PlayerGui
 
     local yOffset = 0.4
     local lineHeight = 0.05
 
-    -- Re-parent the cloned labels
-    playerCountDisplay.alliedGroup1.Parent = newScreenGui
-    playerCountDisplay.alliedGroup1.Name = "AlliedGroup1Count"
-    playerCountDisplay.alliedGroup1.Text = "0"
-    playerCountDisplay.alliedGroup1.TextColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
-    playerCountDisplay.alliedGroup1.TextSize = 16
-    playerCountDisplay.alliedGroup1.BackgroundTransparency = 1
-    playerCountDisplay.alliedGroup1.Size = UDim2.new(0, 50, 0, 20)
-    playerCountDisplay.alliedGroup1.Position = UDim2.new(0, 10, yOffset, 0)
+    -- Clone the templates and parent them to the new ScreenGui instance
+    local currentAlliedGroup1Label = alliedGroup1LabelTemplate:Clone()
+    currentAlliedGroup1Label.Name = "AlliedGroup1Count"
+    currentAlliedGroup1Label.Text = "0"
+    currentAlliedGroup1Label.TextColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
+    currentAlliedGroup1Label.TextSize = 16
+    currentAlliedGroup1Label.BackgroundTransparency = 1
+    currentAlliedGroup1Label.Size = UDim2.new(0, 50, 0, 20)
+    currentAlliedGroup1Label.Position = UDim2.new(0, 10, yOffset, 0)
+    currentAlliedGroup1Label.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
-    playerCountDisplay.alliedGroup2.Parent = newScreenGui
-    playerCountDisplay.alliedGroup2.Name = "AlliedGroup2Count"
-    playerCountDisplay.alliedGroup2.Text = "0"
-    playerCountDisplay.alliedGroup2.TextColor3 = Color3.fromRGB(0, 100, 0) -- Dark Green
-    playerCountDisplay.alliedGroup2.TextSize = 16
-    playerCountDisplay.alliedGroup2.BackgroundTransparency = 1
-    playerCountDisplay.alliedGroup2.Size = UDim2.new(0, 50, 0, 20)
-    playerCountDisplay.alliedGroup2.Position = UDim2.new(0, 10, yOffset, 0)
+    local currentAlliedGroup2Label = alliedGroup2LabelTemplate:Clone()
+    currentAlliedGroup2Label.Name = "AlliedGroup2Count"
+    currentAlliedGroup2Label.Text = "0"
+    currentAlliedGroup2Label.TextColor3 = Color3.fromRGB(0, 100, 0) -- Dark Green
+    currentAlliedGroup2Label.TextSize = 16
+    currentAlliedGroup2Label.BackgroundTransparency = 1
+    currentAlliedGroup2Label.Size = UDim2.new(0, 50, 0, 20)
+    currentAlliedGroup2Label.Position = UDim2.new(0, 10, yOffset, 0)
+    currentAlliedGroup2Label.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
-    playerCountDisplay.alliedGroup3.Parent = newScreenGui
-    playerCountDisplay.alliedGroup3.Name = "AlliedGroup3Count"
-    playerCountDisplay.alliedGroup3.Text = "0"
-    playerCountDisplay.alliedGroup3.TextColor3 = Color3.fromRGB(255, 0, 0)
-    playerCountDisplay.alliedGroup3.TextSize = 16
-    playerCountDisplay.alliedGroup3.BackgroundTransparency = 1
-    playerCountDisplay.alliedGroup3.Size = UDim2.new(0, 50, 0, 20)
-    playerCountDisplay.alliedGroup3.Position = UDim2.new(0, 10, yOffset, 0)
+    local currentAlliedGroup3Label = alliedGroup3LabelTemplate:Clone()
+    currentAlliedGroup3Label.Name = "AlliedGroup3Count"
+    currentAlliedGroup3Label.Text = "0"
+    currentAlliedGroup3Label.TextColor3 = Color3.fromRGB(255, 0, 0)
+    currentAlliedGroup3Label.TextSize = 16
+    currentAlliedGroup3Label.BackgroundTransparency = 1
+    currentAlliedGroup3Label.Size = UDim2.new(0, 50, 0, 20)
+    currentAlliedGroup3Label.Position = UDim2.new(0, 10, yOffset, 0)
+    currentAlliedGroup3Label.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
-    playerCountDisplay.goc.Parent = newScreenGui
-    playerCountDisplay.goc.Name = "GOCCount"
-    playerCountDisplay.goc.Text = "0"
-    playerCountDisplay.goc.TextColor3 = Color3.fromRGB(128, 128, 128)
-    playerCountDisplay.goc.TextSize = 16
-    playerCountDisplay.goc.BackgroundTransparency = 1
-    playerCountDisplay.goc.Size = UDim2.new(0, 50, 0, 20)
-    playerCountDisplay.goc.Position = UDim2.new(0, 10, yOffset, 0)
+    local currentGocLabel = gocLabelTemplate:Clone()
+    currentGocLabel.Name = "GOCCount"
+    currentGocLabel.Text = "0"
+    currentGocLabel.TextColor3 = Color3.fromRGB(128, 128, 128)
+    currentGocLabel.TextSize = 16
+    currentGocLabel.BackgroundTransparency = 1
+    currentGocLabel.Size = UDim2.new(0, 50, 0, 20)
+    currentGocLabel.Position = UDim2.new(0, 10, yOffset, 0)
+    currentGocLabel.Parent = newScreenGui
 end
 
 -- Connect to CharacterAdded event to re-setup the GUI on respawn
-v5.CharacterAdded:Connect(function()
+v5.CharacterAdded:Connect(function(character)
     setupPlayerCounterGui()
 end)
 
 -- Initial setup when the script first runs
 setupPlayerCounterGui()
-
--- Fix for GUI interfering with camera:
--- We'll try to explicitly set MouseBehavior when the GUI is visible
--- and restore it when not, or ensure camera mode is controlled by Roblox.
--- Fluent usually manages this, but if not, this can help.
-local function updateCameraBehavior()
-    -- This is a general attempt. If Fluent is the root cause, its own handling might be needed.
-    -- For now, we ensure Roblox's default camera script has control.
-    v5.CameraMode = Enum.CameraMode.Classic
-    v3.MouseBehavior = Enum.MouseBehavior.Default
-end
-
--- Try to update camera behavior whenever the character is added or the GUI is toggled
-v5.CharacterAdded:Connect(updateCameraBehavior)
--- Also, the Fluent window might have an event for visibility change;
--- if not, a periodic check or manual call might be needed if issues persist.
--- For now, relying on character added and default Roblox behavior.
 
 
 -- Helper function to check line of sight
@@ -254,10 +268,33 @@ local function v17()
     end
 
     -- Update the display labels with the new counts without descriptive text
-    -- We need to check if the labels exist within PlayerGui's current ScreenGui instance.
-    local currentScreenGui = v5.PlayerGui:FindFirstChild(screenGui.Name)
+    local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if currentScreenGui then
-        if currentScreenGui.AlliedGroup1Count then currentScreenGui.AlliedGroup1Count.Text = tostring(currentAlliedGroup1Count) end
-        if currentScreenGui.AlliedGroup2Count then currentScreenGui.AlliedGroup2Count.Text = tostring(currentAlliedGroup2Count) end
-        if currentScreenGui.AlliedGroup3Count then currentScreenGui.AlliedGroup3Count.Text = tostring(currentAlliedGroup3Count) end
-        if currentScreen
+        -- Find the specific labels by name and update their text
+        local label1 = currentScreenGui:FindFirstChild("AlliedGroup1Count")
+        if label1 then label1.Text = tostring(currentAlliedGroup1Count) end
+
+        local label2 = currentScreenGui:FindFirstChild("AlliedGroup2Count")
+        if label2 then label2.Text = tostring(currentAlliedGroup2Count) end
+
+        local label3 = currentScreenGui:FindFirstChild("AlliedGroup3Count")
+        if label3 then label3.Text = tostring(currentAlliedGroup3Count) end
+
+        local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
+        if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
+    end
+
+    return v26;
+end
+
+-- RenderStepped connection to execute aim assist logic every frame.
+v2.RenderStepped:Connect(function()
+    if v9 then
+        local v31=v17();
+        if v31 then
+            -- Only CFrame mode is available now, no mouse manipulation.
+            local v41=(v31.Position-v4.CFrame.Position).Unit;
+            v4.CFrame=v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position,v4.CFrame.Position + v41 ),v8);
+        end
+    end
+end);
