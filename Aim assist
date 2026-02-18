@@ -4,7 +4,6 @@ local v2=game:GetService("RunService");
 local v3=game:GetService("UserInputService");
 local v4=workspace.CurrentCamera;
 local v5=v1.LocalPlayer;
-local VIM=game:GetService("VirtualInputManager"); -- Added VIM
 
 local v8=0.1; -- Stronk (Assist Strength)
 local v9=false; -- AimAssistToggle
@@ -37,7 +36,7 @@ v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=f
 v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
 
--- GUI Toggle Dot (simulates Insert key press)
+-- GUI Toggle Dot (directly toggles Fluent GUI visibility and changes color)
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "GUIToggle"
 toggleGui.Parent = v5.PlayerGui
@@ -46,16 +45,22 @@ local toggleButton = Instance.new("TextButton")
 toggleButton.Name = "ToggleButton"
 toggleButton.Size = UDim2.new(0, 20, 0, 20)
 toggleButton.Position = UDim2.new(0, 5, 0, 5)
-toggleButton.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green when GUI is visible
 toggleButton.Text = ""
 toggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 toggleButton.BorderMode = Enum.BorderMode.Outline
 toggleButton.Parent = toggleGui
 
+local guiVisible = true -- Track Fluent GUI visibility state
+
+-- Ensure Fluent GUI starts visible when script loads
+v15.Visible = true
+
 toggleButton.MouseButton1Click:Connect(function()
-    VIM:SendKeyEvent(true, Enum.KeyCode.Insert, false, game)
-    task.wait(0.05)
-    VIM:SendKeyEvent(false, Enum.KeyCode.Insert, false, game)
+    guiVisible = not guiVisible
+    v15.Visible = guiVisible -- <--- THIS IS THE CRUCIAL LINE FOR TOGGLING VISIBILITY
+    -- Change dot color to reflect state (green when GUI is visible, red when hidden)
+    toggleButton.BackgroundColor3 = guiVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
 
