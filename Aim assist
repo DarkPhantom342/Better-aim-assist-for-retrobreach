@@ -300,4 +300,3 @@ v2.RenderStepped:Connect(function()
         end
     end
 end);
-``
