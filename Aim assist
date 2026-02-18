@@ -47,7 +47,7 @@ toggleButton.Name = "ToggleButton"
 toggleButton.Size = UDim2.new(0, 20, 0, 20) -- Small square button
 toggleButton.Position = UDim2.new(0, 5, 0, 5) -- Top-left corner
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green when visible (default)
-toggleButton.Text = "" -- No text as discussed for a minimalist dot
+toggleButton.Text = "" -- No text for a minimalist dot
 toggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 toggleButton.BorderMode = Enum.BorderMode.Outline
 toggleButton.Parent = toggleGui
@@ -57,7 +57,7 @@ local guiVisible = true -- Fluent GUI starts visible
 -- Function to toggle Fluent GUI visibility
 toggleButton.MouseButton1Click:Connect(function()
     guiVisible = not guiVisible
-    v15.Visible = guiVisible
+    v15.Visible = guiVisible -- <--- THIS IS THE CRUCIAL LINE I MISSED BEFORE
     -- Change dot color to reflect state (green when GUI is visible, red when hidden)
     toggleButton.BackgroundColor3 = guiVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
