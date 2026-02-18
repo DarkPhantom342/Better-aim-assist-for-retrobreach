@@ -5,7 +5,7 @@ local v3=game:GetService("UserInputService");
 local v4=workspace.CurrentCamera;
 local v5=v1.LocalPlayer;
 
-local v8=0.1; -- Assist Strength
+local v8=0.1; -- Stronk
 local v9=false; -- AimAssistToggle
 local v10=40; -- Aim FOV (px)
 local v11="CFrame"; -- Aim Mode (Fixed to CFrame)
@@ -18,13 +18,13 @@ local v48=false; -- WallCheckToggle
 local disableForAlliedGroup1 = false; -- Covers MTF, Foundation Personnel, Security Department
 local disableForAlliedGroup2 = false; -- Covers Class-D, Chaos Insurgency
 local disableForGlobalOccultCoalition = false;
--- disableForSCP966 removed as it's no longer needed
 
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
 
 v16:AddToggle("AimAssistToggle",{Title="Aim Assist",Default=false,Callback=function(v18) v9=v18;end});
-v16:AddSlider("FollowSlider",{Title="Assist Strength",Default=10,Min=1,Max=50,Rounding=0,Callback=function(v20) v8=v20/100 ;end});
+-- Renamed "Assist Strength" to "Stronk" and removed description
+v16:AddSlider("FollowSlider",{Title="Stronk",Default=10,Min=1,Max=50,Rounding=0,Callback=function(v20) v8=v20/100 ;end});
 v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Default=40,Min=1,Max=100,Rounding=0,Callback=function(v21) v10=v21;end});
 v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame"},Default="CFrame",Callback=function(v22) v11=v22;end});
 v16:AddDropdown("TargetPartDropdown",{Title="Target Part",Values={"Head","HumanoidRootPart"},Default="HumanoidRootPart",Callback=function(v23) v12=v23;end});
@@ -36,7 +36,6 @@ v16:AddToggle("WallCheckToggle",{Title="Wall Check",Default=false,Callback=funct
 v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=false,Callback=function(value) disableForAlliedGroup1 = value;end});
 v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
--- SCP966Toggle removed
 
 
 -- Player count display setup
@@ -56,7 +55,7 @@ local lineHeight = 0.05
 
 playerCountDisplay.alliedGroup1.Name = "AlliedGroup1Count"
 playerCountDisplay.alliedGroup1.Text = "0"
-playerCountDisplay.alliedGroup1.TextColor3 = Color3.fromRGB(173, 216, 230)
+playerCountDisplay.alliedGroup1.TextColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
 playerCountDisplay.alliedGroup1.TextSize = 16
 playerCountDisplay.alliedGroup1.BackgroundTransparency = 1
 playerCountDisplay.alliedGroup1.Size = UDim2.new(0, 50, 0, 20)
@@ -66,7 +65,7 @@ yOffset = yOffset + lineHeight
 
 playerCountDisplay.alliedGroup2.Name = "AlliedGroup2Count"
 playerCountDisplay.alliedGroup2.Text = "0"
-playerCountDisplay.alliedGroup2.TextColor3 = Color3.fromRGB(0, 255, 0)
+playerCountDisplay.alliedGroup2.TextColor3 = Color3.fromRGB(0, 100, 0) -- Dark Green
 playerCountDisplay.alliedGroup2.TextSize = 16
 playerCountDisplay.alliedGroup2.BackgroundTransparency = 1
 playerCountDisplay.alliedGroup2.Size = UDim2.new(0, 50, 0, 20)
@@ -197,8 +196,6 @@ local function v17()
                 end
             end
 
-            -- SCP966 specific check removed
-
             local v33=v30.Character:FindFirstChildOfClass("Humanoid");
             if (v14 and v33 and (v33.Health<=0)) then continue;end
 
@@ -221,11 +218,11 @@ local function v17()
         end
     end
 
-    -- Update the display labels with the new counts
-    playerCountDisplay.alliedGroup1.Text = "MTF/FDN/SEC: " .. tostring(currentAlliedGroup1Count)
-    playerCountDisplay.alliedGroup2.Text = "Class-D/Chaos Ins: " .. tostring(currentAlliedGroup2Count)
-    playerCountDisplay.alliedGroup3.Text = "SH/SCP: " .. tostring(currentAlliedGroup3Count)
-    playerCountDisplay.goc.Text = "GOC: " .. tostring(currentGOCCount)
+    -- Update the display labels with the new counts without descriptive text
+    playerCountDisplay.alliedGroup1.Text = tostring(currentAlliedGroup1Count)
+    playerCountDisplay.alliedGroup2.Text = tostring(currentAlliedGroup2Count)
+    playerCountDisplay.alliedGroup3.Text = tostring(currentAlliedGroup3Count)
+    playerCountDisplay.goc.Text = tostring(currentGOCCount)
 
     return v26;
 end
