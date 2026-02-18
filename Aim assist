@@ -17,7 +17,7 @@ local v48=false; -- WallCheckToggle
 -- These variables are back to being controlled by GUI toggles, with new names
 local disableForFoundation = false;
 local disableForCounterforces = false;
-local disableForAnomalies = false; -- We will re-add this toggle
+local disableForAnomalies = false;
 local disableForGOC = false;
 
 -- Fluent GUI setup
@@ -33,7 +33,7 @@ v16:AddToggle("TeamCheckToggle",{Title="Ignore Exact Team",Default=false,Callbac
 v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Default=false,Callback=function(v25) v14=v25;end});
 v16:AddToggle("WallCheckToggle",{Title="Wall Check",Default=false,Callback=function(value) v48=value;end});
 
--- Reinstated manual toggles with new group names
+-- Reinstated manual toggles with new group names and consistent double quotes
 v16:AddToggle("FoundationToggle",{Title="Disable for Foundation",Default=false,Callback=function(value) disableForFoundation = value;end});
 v16:AddToggle("CounterforcesToggle",{Title="Disable for Counter-forces",Default=false,Callback=function(value) disableForCounterforces = value;end});
 v16:AddToggle("AnomaliesToggle",{Title="Disable for Anomalies",Default=false,Callback=function(value) disableForAnomalies = value;end});
