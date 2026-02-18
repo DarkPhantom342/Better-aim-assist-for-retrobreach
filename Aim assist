@@ -36,34 +36,6 @@ v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=f
 v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
 
--- GUI Toggle Dot (directly toggles Fluent GUI visibility and changes color)
-local toggleGui = Instance.new("ScreenGui")
-toggleGui.Name = "GUIToggle"
-toggleGui.Parent = v5.PlayerGui
-
-local toggleButton = Instance.new("TextButton")
-toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0, 20, 0, 20)
-toggleButton.Position = UDim2.new(0, 5, 0, 5)
-toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green when GUI is visible
-toggleButton.Text = ""
-toggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-toggleButton.BorderMode = Enum.BorderMode.Outline
-toggleButton.Parent = toggleGui
-
-local guiVisible = true -- Track Fluent GUI visibility state
-
--- Ensure Fluent GUI starts visible when script loads
-v15.Visible = true
-
-toggleButton.MouseButton1Click:Connect(function()
-    guiVisible = not guiVisible
-    v15.Visible = guiVisible -- Attempt to set visibility (Fluent may override)
-    -- Change dot color to reflect state (green when GUI is visible, red when hidden)
-    toggleButton.BackgroundColor3 = guiVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-end)
-
-
 -- Player count display setup: Templates for labels
 local alliedGroup1LabelTemplate = Instance.new("TextLabel")
 alliedGroup1LabelTemplate.Text = "0"
@@ -264,8 +236,15 @@ local function findBestTarget()
 end
 
 v2.RenderStepped:Connect(function()
-    -- Only run aim assist logic if the Fluent GUI is currently marked as visible by our toggle
-    if v9 and guiVisible then -- Add guiVisible check here
+    -- Check if the mouse is currently interacting with any GUI element.
+    -- This includes dragging a window, clicking a button, or typing in a textbox.
+    -- If this condition is true, we should prevent camera movement.
+    if v3:GetFocusedTextBox() ~= nil or (v3:IsMouseButtonDown(Enum.UserInputType.MouseButton1) and v3:GetMouse().Target and v3:GetMouse().Target:IsA("GuiObject")) then
+        return -- Skip camera movement if GUI is being interacted with
+    end
+
+    -- Only run aim assist logic if the Aim Assist toggle is ON.
+    if v9 then
         local target = findBestTarget();
         if target then
             local direction = (target.Position - v4.CFrame.Position).Unit;
