@@ -10,14 +10,15 @@ local v9=false; -- AimAssistToggle
 local v10=40; -- Aim FOV (px)
 local v11="CFrame"; -- Aim Mode (Fixed to CFrame)
 local v12="HumanoidRootPart"; -- Target Part
-local v13=false; -- TeamCheckToggle
+local v13=false; -- TeamCheckToggle (This is "Ignore exact team", still useful)
 local v14=false; -- DeadCheckToggle
 local v48=false; -- WallCheckToggle
 
--- Consolidated team toggles
-local disableForAlliedGroup1 = false;
-local disableForAlliedGroup2 = false;
-local disableForGlobalOccultCoalition = false;
+-- These variables are back to being controlled by GUI toggles, with new names
+local disableForFoundation = false;
+local disableForCounterforces = false;
+local disableForAnomalies = false; -- We will re-add this toggle
+local disableForGOC = false;
 
 -- Fluent GUI setup
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
@@ -28,38 +29,42 @@ v16:AddSlider("FollowSlider",{Title="Stronk",Default=10,Min=1,Max=50,Rounding=0,
 v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Default=40,Min=1,Max=100,Rounding=0,Callback=function(v21) v10=v21;end});
 v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame"},Default="CFrame",Callback=function(v22) v11=v22;end});
 v16:AddDropdown("TargetPartDropdown",{Title="Target Part",Values={"Head","HumanoidRootPart"},Default="HumanoidRootPart",Callback=function(v23) v12=v23;end});
-v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Default=false,Callback=function(v24) v13=v24;end});
+v16:AddToggle("TeamCheckToggle",{Title="Ignore Exact Team",Default=false,Callback=function(v24) v13=v24;end}); -- Renamed for clarity
 v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Default=false,Callback=function(v25) v14=v25;end});
 v16:AddToggle("WallCheckToggle",{Title="Wall Check",Default=false,Callback=function(value) v48=value;end});
 
-v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=false,Callback=function(value) disableForAlliedGroup1 = value;end});
-v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
-v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
+-- Reinstated manual toggles with new group names
+v16:AddToggle("FoundationToggle",{Title="Disable for Foundation",Default=false,Callback=function(value) disableForFoundation = value;end});
+v16:AddToggle("CounterforcesToggle",{Title="Disable for Counter-forces",Default=false,Callback=function(value) disableForCounterforces = value;end});
+v16:AddToggle("AnomaliesToggle",{Title="Disable for Anomalies",Default=false,Callback=function(value) disableForAnomalies = value;end});
+v16:AddToggle("GOCToggle",{Title="Disable for GOC",Default=false,Callback=function(value) disableForGOC = value;end});
+
 
 -- Player count display setup: Templates for labels
-local alliedGroup1LabelTemplate = Instance.new("TextLabel")
-alliedGroup1LabelTemplate.Text = "0"
-alliedGroup1LabelTemplate.TextColor3 = Color3.fromRGB(0, 0, 139)
-alliedGroup1LabelTemplate.TextSize = 16
-alliedGroup1LabelTemplate.BackgroundTransparency = 1
-alliedGroup1LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
-alliedGroup1LabelTemplate.Font = Enum.Font.SourceSansBold
+-- Renamed label templates for consistency
+local foundationLabelTemplate = Instance.new("TextLabel")
+foundationLabelTemplate.Text = "0"
+foundationLabelTemplate.TextColor3 = Color3.fromRGB(0, 0, 139)
+foundationLabelTemplate.TextSize = 16
+foundationLabelTemplate.BackgroundTransparency = 1
+foundationLabelTemplate.Size = UDim2.new(0, 50, 0, 20)
+foundationLabelTemplate.Font = Enum.Font.SourceSansBold
 
-local alliedGroup2LabelTemplate = Instance.new("TextLabel")
-alliedGroup2LabelTemplate.Text = "0"
-alliedGroup2LabelTemplate.TextColor3 = Color3.fromRGB(0, 100, 0)
-alliedGroup2LabelTemplate.TextSize = 16
-alliedGroup2LabelTemplate.BackgroundTransparency = 1
-alliedGroup2LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
-alliedGroup2LabelTemplate.Font = Enum.Font.SourceSansBold
+local counterforcesLabelTemplate = Instance.new("TextLabel")
+counterforcesLabelTemplate.Text = "0"
+counterforcesLabelTemplate.TextColor3 = Color3.fromRGB(0, 100, 0)
+counterforcesLabelTemplate.TextSize = 16
+counterforcesLabelTemplate.BackgroundTransparency = 1
+counterforcesLabelTemplate.Size = UDim2.new(0, 50, 0, 20)
+counterforcesLabelTemplate.Font = Enum.Font.SourceSansBold
 
-local alliedGroup3LabelTemplate = Instance.new("TextLabel")
-alliedGroup3LabelTemplate.Text = "0"
-alliedGroup3LabelTemplate.TextColor3 = Color3.fromRGB(255, 0, 0)
-alliedGroup3LabelTemplate.TextSize = 16
-alliedGroup3LabelTemplate.BackgroundTransparency = 1
-alliedGroup3LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
-alliedGroup3LabelTemplate.Font = Enum.Font.SourceSansBold
+local anomaliesLabelTemplate = Instance.new("TextLabel")
+anomaliesLabelTemplate.Text = "0"
+anomaliesLabelTemplate.TextColor3 = Color3.fromRGB(255, 0, 0)
+anomaliesLabelTemplate.TextSize = 16
+anomaliesLabelTemplate.BackgroundTransparency = 1
+anomaliesLabelTemplate.Size = UDim2.new(0, 50, 0, 20)
+anomaliesLabelTemplate.Font = Enum.Font.SourceSansBold
 
 local gocLabelTemplate = Instance.new("TextLabel")
 gocLabelTemplate.Text = "0"
@@ -81,22 +86,23 @@ local function setupPlayerCounterGui()
     local yOffset = 0.4
     local lineHeight = 0.05
 
-    local currentAlliedGroup1Label = alliedGroup1LabelTemplate:Clone()
-    currentAlliedGroup1Label.Name = "AlliedGroup1Count"
-    currentAlliedGroup1Label.Position = UDim2.new(0, 10, yOffset, 0)
-    currentAlliedGroup1Label.Parent = newScreenGui
+    -- Update label creation with new names
+    local currentFoundationLabel = foundationLabelTemplate:Clone()
+    currentFoundationLabel.Name = "FoundationCount"
+    currentFoundationLabel.Position = UDim2.new(0, 10, yOffset, 0)
+    currentFoundationLabel.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
-    local currentAlliedGroup2Label = alliedGroup2LabelTemplate:Clone()
-    currentAlliedGroup2Label.Name = "AlliedGroup2Count"
-    currentAlliedGroup2Label.Position = UDim2.new(0, 10, yOffset, 0)
-    currentAlliedGroup2Label.Parent = newScreenGui
+    local currentCounterforcesLabel = counterforcesLabelTemplate:Clone()
+    currentCounterforcesLabel.Name = "CounterforcesCount"
+    currentCounterforcesLabel.Position = UDim2.new(0, 10, yOffset, 0)
+    currentCounterforcesLabel.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
-    local currentAlliedGroup3Label = alliedGroup3LabelTemplate:Clone()
-    currentAlliedGroup3Label.Name = "AlliedGroup3Count"
-    currentAlliedGroup3Label.Position = UDim2.new(0, 10, yOffset, 0)
-    currentAlliedGroup3Label.Parent = newScreenGui
+    local currentAnomaliesLabel = anomaliesLabelTemplate:Clone()
+    currentAnomaliesLabel.Name = "AnomaliesCount"
+    currentAnomaliesLabel.Position = UDim2.new(0, 10, yOffset, 0)
+    currentAnomaliesLabel.Parent = newScreenGui
     yOffset = yOffset + lineHeight
 
     local currentGocLabel = gocLabelTemplate:Clone()
@@ -151,49 +157,98 @@ local function playerHasItems(player)
     return false
 end
 
+-- Helper function to determine which group a team name belongs to
+local function getTeamGroup(teamName)
+    -- Define team groups with new names
+    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
+    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
+    local gocTeamNames = {"Global Occult Coalition"};
+
+    if teamName then
+        if table.find(foundationTeamNames, teamName) then
+            return "Foundation"
+        elseif table.find(counterforcesTeamNames, teamName) then
+            return "Counter-forces"
+        elseif table.find(anomaliesTeamNames, teamName) then
+            return "Anomalies"
+        elseif table.find(gocTeamNames, teamName) then
+            return "GOC"
+        end
+    end
+    return nil -- No group found
+end
+
 local function findBestTarget()
     local bestTargetPart = nil;
     local minFovDistance = v10;
     local screenCenter = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
 
-    local alliedGroup1TeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
-    local alliedGroup2TeamNames = {"Class-D", "Chaos Insurgency"};
-    local alliedGroup3TeamNames = {"Serpent's Hand", "SCP"};
+    -- Define team names directly here for clarity in this function's scope
+    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
+    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
     local gocTeamNames = {"Global Occult Coalition"};
 
-    local currentAlliedGroup1Count = 0
-    local currentAlliedGroup2Count = 0
-    local currentAlliedGroup3Count = 0
+    local currentFoundationCount = 0
+    local currentCounterforcesCount = 0
+    local currentAnomaliesCount = 0
     local currentGOCCount = 0
+
+    local localPlayerTeamName = v5.Team and v5.Team.Name or "";
+    local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
+
 
     for _, targetPlayer in ipairs(v1:GetPlayers()) do
         if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
-            local playerTeamName = v5.Team and v5.Team.Name or "";
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
+            local targetTeamGroup = getTeamGroup(targetTeamName);
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
 
             if isAlive then
-                if table.find(alliedGroup1TeamNames, targetTeamName) then
-                    currentAlliedGroup1Count = currentAlliedGroup1Count + 1
-                elseif table.find(alliedGroup2TeamNames, targetTeamName) then
-                    currentAlliedGroup2Count = currentAlliedGroup2Count + 1
-                elseif table.find(alliedGroup3TeamNames, targetTeamName) then
-                    currentAlliedGroup3Count = currentAlliedGroup3Count + 1
-                elseif table.find(gocTeamNames, targetTeamName) then
+                -- Update counts with new names
+                if targetTeamGroup == "Foundation" then
+                    currentFoundationCount = currentFoundationCount + 1
+                elseif targetTeamGroup == "Counter-forces" then
+                    currentCounterforcesCount = currentCounterforcesCount + 1
+                elseif targetTeamGroup == "Anomalies" then
+                    currentAnomaliesCount = currentAnomaliesCount + 1
+                elseif targetTeamGroup == "GOC" then
                     currentGOCCount = currentGOCCount + 1
                 end
             end
 
-            if v13 and (targetTeamName == playerTeamName) then continue; end
+            -- Layer 1: Auto-disable within my own group.
+            -- If the local player is in a known group, and the target is in the SAME group, skip this target.
+            -- This handles the Chaos Insurgency vs Class-D scenario when you are one of them.
+            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
+                continue; -- Do NOT aim at players in your own "allied" group.
+            end
 
-            if (disableForAlliedGroup1 and table.find(alliedGroup1TeamNames, targetTeamName)) or
-               (disableForAlliedGroup2 and table.find(alliedGroup2TeamNames, targetTeamName)) or
-               (disableForGlobalOccultCoalition and table.find(gocTeamNames, targetTeamName)) then
+            -- Layer 2: Manual "Ignore Exact Team" toggle (v13)
+            if v13 and (targetTeamName == localPlayerTeamName) then
+                continue; -- Skip if "Ignore Exact Team" is ON and target is on the exact same team.
+            end
+            
+            -- Layer 3: Manual "Disable for Group" toggles.
+            -- These override and prevent aiming at ANYONE in the specified group, regardless of local player's team.
+            -- Using new disable variables and group names
+            if (disableForFoundation and targetTeamGroup == "Foundation") then
+                continue;
+            end
+            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
+                continue;
+            end
+            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
+                continue;
+            end
+            if (disableForGOC and targetTeamGroup == "GOC") then
                 continue;
             end
 
+            -- Specific handling for SCP (always skip if they don't have items)
             if targetTeamName == "SCP" then
                 if not playerHasItems(targetPlayer) then continue; end
             end
@@ -219,14 +274,15 @@ local function findBestTarget()
 
     local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if currentScreenGui then
-        local label1 = currentScreenGui:FindFirstChild("AlliedGroup1Count")
-        if label1 then label1.Text = tostring(currentAlliedGroup1Count) end
+        -- Update label text assignments with new names
+        local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
+        if labelFoundation then labelFoundation.Text = tostring(currentFoundationCount) end
 
-        local label2 = currentScreenGui:FindFirstChild("AlliedGroup2Count")
-        if label2 then label2.Text = tostring(currentAlliedGroup2Count) end
+        local labelCounterforces = currentScreenGui:FindFirstChild("CounterforcesCount")
+        if labelCounterforces then labelCounterforces.Text = tostring(currentCounterforcesCount) end
 
-        local label3 = currentScreenGui:FindFirstChild("AlliedGroup3Count")
-        if label3 then label3.Text = tostring(currentAlliedGroup3Count) end
+        local labelAnomalies = currentScreenGui:FindFirstChild("AnomaliesCount")
+        if labelAnomalies then labelAnomalies.Text = tostring(currentAnomaliesCount) end
 
         local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
         if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
@@ -236,14 +292,6 @@ local function findBestTarget()
 end
 
 v2.RenderStepped:Connect(function()
-    -- Check if the mouse is currently interacting with any GUI element.
-    -- This includes dragging a window, clicking a button, or typing in a textbox.
-    -- If this condition is true, we should prevent camera movement.
-    if v3:GetFocusedTextBox() ~= nil or (v3:IsMouseButtonDown(Enum.UserInputType.MouseButton1) and v3:GetMouse().Target and v3:GetMouse().Target:IsA("GuiObject")) then
-        return -- Skip camera movement if GUI is being interacted with
-    end
-
-    -- Only run aim assist logic if the Aim Assist toggle is ON.
     if v9 then
         local target = findBestTarget();
         if target then
@@ -252,3 +300,4 @@ v2.RenderStepped:Connect(function()
         end
     end
 end);
+``
