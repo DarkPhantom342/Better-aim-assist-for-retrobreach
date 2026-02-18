@@ -4,6 +4,7 @@ local v2=game:GetService("RunService");
 local v3=game:GetService("UserInputService");
 local v4=workspace.CurrentCamera;
 local v5=v1.LocalPlayer;
+local VIM=game:GetService("VirtualInputManager"); -- Added VIM
 
 local v8=0.1; -- Stronk (Assist Strength)
 local v9=false; -- AimAssistToggle
@@ -15,8 +16,8 @@ local v14=false; -- DeadCheckToggle
 local v48=false; -- WallCheckToggle
 
 -- Consolidated team toggles
-local disableForAlliedGroup1 = false; -- Covers MTF, Foundation Personnel, Security Department
-local disableForAlliedGroup2 = false; -- Covers Class-D, Chaos Insurgency
+local disableForAlliedGroup1 = false;
+local disableForAlliedGroup2 = false;
 local disableForGlobalOccultCoalition = false;
 
 -- Fluent GUI setup
@@ -32,7 +33,6 @@ v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Default=false,Callback=func
 v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Default=false,Callback=function(v25) v14=v25;end});
 v16:AddToggle("WallCheckToggle",{Title="Wall Check",Default=false,Callback=function(value) v48=value;end});
 
--- Simplified and consolidated team toggles
 v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=false,Callback=function(value) disableForAlliedGroup1 = value;end});
 v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
 v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
@@ -44,47 +44,33 @@ toggleGui.Parent = v5.PlayerGui
 
 local toggleButton = Instance.new("TextButton")
 toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0, 20, 0, 20) -- Small square button
-toggleButton.Position = UDim2.new(0, 5, 0, 5) -- Top-left corner
-toggleButton.BackgroundColor3 = Color3.fromRGB(128, 128, 128) -- Gray color (does not change)
-toggleButton.Text = "" -- No text for a minimalist dot
+toggleButton.Size = UDim2.new(0, 20, 0, 20)
+toggleButton.Position = UDim2.new(0, 5, 0, 5)
+toggleButton.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+toggleButton.Text = ""
 toggleButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
 toggleButton.BorderMode = Enum.BorderMode.Outline
 toggleButton.Parent = toggleGui
 
--- Function to simulate Insert key press
 toggleButton.MouseButton1Click:Connect(function()
-    -- Create an InputObject for the Insert key press
-    local input = Instance.new("InputObject")
-    input.KeyCode = Enum.KeyCode.Insert
-    input.UserInputType = Enum.UserInputType.Keyboard
-    input.UserInputState = Enum.UserInputState.Begin -- Key pressed down
-
-    -- Fire the input to UserInputService
-    v3:SimulateKeyPress(input)
-
-    -- Simulate releasing the key shortly after
-    local inputRelease = Instance.new("InputObject")
-    inputRelease.KeyCode = Enum.KeyCode.Insert
-    inputRelease.UserInputType = Enum.UserInputType.Keyboard
-    inputRelease.UserInputState = Enum.UserInputState.End -- Key released
-    v3:SimulateKeyPress(inputRelease)
+    VIM:SendKeyEvent(true, Enum.KeyCode.Insert, false, game)
+    task.wait(0.05)
+    VIM:SendKeyEvent(false, Enum.KeyCode.Insert, false, game)
 end)
 
 
 -- Player count display setup: Templates for labels
--- Define all common properties here so they don't have to be repeated for each clone.
 local alliedGroup1LabelTemplate = Instance.new("TextLabel")
 alliedGroup1LabelTemplate.Text = "0"
-alliedGroup1LabelTemplate.TextColor3 = Color3.fromRGB(0, 0, 139) -- Dark Blue
+alliedGroup1LabelTemplate.TextColor3 = Color3.fromRGB(0, 0, 139)
 alliedGroup1LabelTemplate.TextSize = 16
 alliedGroup1LabelTemplate.BackgroundTransparency = 1
 alliedGroup1LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
-alliedGroup1LabelTemplate.Font = Enum.Font.SourceSansBold -- Added for better visibility
+alliedGroup1LabelTemplate.Font = Enum.Font.SourceSansBold
 
 local alliedGroup2LabelTemplate = Instance.new("TextLabel")
 alliedGroup2LabelTemplate.Text = "0"
-alliedGroup2LabelTemplate.TextColor3 = Color3.fromRGB(0, 100, 0) -- Dark Green
+alliedGroup2LabelTemplate.TextColor3 = Color3.fromRGB(0, 100, 0)
 alliedGroup2LabelTemplate.TextSize = 16
 alliedGroup2LabelTemplate.BackgroundTransparency = 1
 alliedGroup2LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
@@ -92,7 +78,7 @@ alliedGroup2LabelTemplate.Font = Enum.Font.SourceSansBold
 
 local alliedGroup3LabelTemplate = Instance.new("TextLabel")
 alliedGroup3LabelTemplate.Text = "0"
-alliedGroup3LabelTemplate.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red
+alliedGroup3LabelTemplate.TextColor3 = Color3.fromRGB(255, 0, 0)
 alliedGroup3LabelTemplate.TextSize = 16
 alliedGroup3LabelTemplate.BackgroundTransparency = 1
 alliedGroup3LabelTemplate.Size = UDim2.new(0, 50, 0, 20)
@@ -100,29 +86,24 @@ alliedGroup3LabelTemplate.Font = Enum.Font.SourceSansBold
 
 local gocLabelTemplate = Instance.new("TextLabel")
 gocLabelTemplate.Text = "0"
-gocLabelTemplate.TextColor3 = Color3.fromRGB(128, 128, 128) -- Gray
+gocLabelTemplate.TextColor3 = Color3.fromRGB(128, 128, 128)
 gocLabelTemplate.TextSize = 16
 gocLabelTemplate.BackgroundTransparency = 1
 gocLabelTemplate.Size = UDim2.new(0, 50, 0, 20)
 gocLabelTemplate.Font = Enum.Font.SourceSansBold
 
 
--- Function to set up the player counter GUI. This will be called on character spawn.
 local function setupPlayerCounterGui()
-    -- Clean up old GUI if it exists in PlayerGui
     local existingScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
-    if existingScreenGui then
-        existingScreenGui:Destroy()
-    end
+    if existingScreenGui then existingScreenGui:Destroy() end
 
     local newScreenGui = Instance.new("ScreenGui")
     newScreenGui.Name = "PlayerCounterDisplay"
     newScreenGui.Parent = v5.PlayerGui
 
-    local yOffset = 0.4 -- Starting vertical position
-    local lineHeight = 0.05 -- Vertical spacing between labels
+    local yOffset = 0.4
+    local lineHeight = 0.05
 
-    -- Clone the templates and parent them to the new ScreenGui instance, setting their unique properties (like position and name)
     local currentAlliedGroup1Label = alliedGroup1LabelTemplate:Clone()
     currentAlliedGroup1Label.Name = "AlliedGroup1Count"
     currentAlliedGroup1Label.Position = UDim2.new(0, 10, yOffset, 0)
@@ -147,16 +128,13 @@ local function setupPlayerCounterGui()
     currentGocLabel.Parent = newScreenGui
 end
 
--- Connect to CharacterAdded event to re-setup the GUI on respawn
 v5.CharacterAdded:Connect(function(character)
     setupPlayerCounterGui()
 end)
 
--- Initial setup when the script first runs
 setupPlayerCounterGui()
 
 
--- Helper function to check line of sight (Wall Check)
 local function hasLineOfSight(camera, targetPart)
     local origin = camera.CFrame.Position
     local targetPosition = targetPart.Position
@@ -165,7 +143,6 @@ local function hasLineOfSight(camera, targetPart)
 
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    -- Exclude local player's character to prevent self-intersections
     if v5.Character then
         raycastParams.FilterDescendantsInstances = {v5.Character}
     else
@@ -176,51 +153,37 @@ local function hasLineOfSight(camera, targetPart)
 
     if raycastResult then
         local hitInstance = raycastResult.Instance
-        -- Check if the hit instance is the target part or one of its descendants (e.g., if target is part of a larger model)
         if hitInstance == targetPart or (targetPart.Parent and hitInstance:IsDescendantOf(targetPart.Parent)) then
             return true
         else
             return false
         end
     end
-    
-    return true -- If no raycast result (no obstruction), assume line of sight
+    return true
 end
 
--- Helper function to check if a player has items in their inventory (for SCP team logic)
 local function playerHasItems(player)
     if not player then return false end
-
-    -- Check Backpack
     local backpack = player:FindFirstChildOfClass("Backpack")
-    if backpack and #backpack:GetChildren() > 0 then
-        return true
-    end
-
-    -- Check Character for tools
+    if backpack and #backpack:GetChildren() > 0 then return true end
     if player.Character then
         for _, child in ipairs(player.Character:GetChildren()) do
-            if child:IsA("Tool") then
-                return true
-            end
+            if child:IsA("Tool") then return true end
         end
     end
     return false
 end
 
--- Main function to find the best target and determine aim assist status
 local function findBestTarget()
     local bestTargetPart = nil;
-    local minFovDistance = v10; -- Current minimum FOV distance
-    local screenCenter = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 ); -- Center of the screen
+    local minFovDistance = v10;
+    local screenCenter = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
 
-    -- Define the groups for player counting and aim assist logic
     local alliedGroup1TeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
     local alliedGroup2TeamNames = {"Class-D", "Chaos Insurgency"};
     local alliedGroup3TeamNames = {"Serpent's Hand", "SCP"};
     local gocTeamNames = {"Global Occult Coalition"};
 
-    -- Initialize counts for the display
     local currentAlliedGroup1Count = 0
     local currentAlliedGroup2Count = 0
     local currentAlliedGroup3Count = 0
@@ -231,7 +194,6 @@ local function findBestTarget()
             local playerTeamName = v5.Team and v5.Team.Name or "";
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
 
-            -- Update counts for the display *before* any aim assist specific filtering
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
 
@@ -247,35 +209,25 @@ local function findBestTarget()
                 end
             end
 
-            -- Apply general team check
-            if v13 and (targetTeamName == playerTeamName) then
-                continue;
-            end
+            if v13 and (targetTeamName == playerTeamName) then continue; end
 
-            -- Apply specific group disable toggles
             if (disableForAlliedGroup1 and table.find(alliedGroup1TeamNames, targetTeamName)) or
                (disableForAlliedGroup2 and table.find(alliedGroup2TeamNames, targetTeamName)) or
                (disableForGlobalOccultCoalition and table.find(gocTeamNames, targetTeamName)) then
                 continue;
             end
 
-            -- Main SCP team check (only target SCP if they have no items)
             if targetTeamName == "SCP" then
-                if not playerHasItems(targetPlayer) then
-                    continue; -- Don't target SCPs without items
-                end
+                if not playerHasItems(targetPlayer) then continue; end
             end
 
-            -- Dead Check
-            if (v14 and targetHumanoid and (targetHumanoid.Health <= 0)) then continue;end
+            if (v14 and targetHumanoid and (targetHumanoid.Health <= 0)) then continue; end
 
             local targetPart = targetPlayer.Character[v12];
             local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
 
             if isOnScreen then
-                if v48 and not hasLineOfSight(v4, targetPart) then
-                    continue
-                end
+                if v48 and not hasLineOfSight(v4, targetPart) then continue end
 
                 local targetScreenPosition=Vector2.new(worldToViewportPoint.X,worldToViewportPoint.Y);
                 local fovDistance=(targetScreenPosition-screenCenter).Magnitude;
@@ -288,10 +240,8 @@ local function findBestTarget()
         end
     end
 
-    -- Update the display labels with the new counts without descriptive text
     local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if currentScreenGui then
-        -- Find the specific labels by name and update their text
         local label1 = currentScreenGui:FindFirstChild("AlliedGroup1Count")
         if label1 then label1.Text = tostring(currentAlliedGroup1Count) end
 
@@ -308,12 +258,10 @@ local function findBestTarget()
     return bestTargetPart;
 end
 
--- RenderStepped connection to execute aim assist logic every frame.
 v2.RenderStepped:Connect(function()
     if v9 then
         local target = findBestTarget();
         if target then
-            -- Only CFrame mode is available now, no mouse manipulation.
             local direction = (target.Position - v4.CFrame.Position).Unit;
             v4.CFrame = v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position, v4.CFrame.Position + direction), v8);
         end
