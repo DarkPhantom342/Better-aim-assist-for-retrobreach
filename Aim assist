@@ -4,48 +4,39 @@ local v2=game:GetService("RunService");
 local v3=game:GetService("UserInputService");
 local v4=workspace.CurrentCamera;
 local v5=v1.LocalPlayer;
-local v6=v3.MouseDeltaSensitivity;
 
-local v7=0.6; -- DPI Reduction
 local v8=0.1; -- Assist Strength
 local v9=false; -- AimAssistToggle
 local v10=40; -- Aim FOV (px)
-local v11="Mouse"; -- Aim Mode (Restored)
+local v11="CFrame"; -- Aim Mode (Fixed to CFrame)
 local v12="HumanoidRootPart"; -- Target Part
-local v13=false; -- TeamCheckToggle (This is now for team vs. team, not disabling certain teams)
+local v13=false; -- TeamCheckToggle
 local v14=false; -- DeadCheckToggle
 local v48=false; -- WallCheckToggle
 
--- New variables for individual team toggles
-local disableForChaosInsurgency = false;
-local disableForFoundationPersonnel = false;
-local disableForMobileTaskForces = false; -- Covers both MTF and Security Department
+-- Consolidated team toggles
+local disableForAlliedGroup1 = false; -- Covers MTF, Foundation Personnel, Security Department
+local disableForAlliedGroup2 = false; -- Covers Class-D, Chaos Insurgency
 local disableForGlobalOccultCoalition = false;
-local disableForSCP966 = false; -- NEW VARIABLE FOR SCP-966 (This was SCP-specific, keeping it for now but might need adjustment if "SCP" team covers all)
+-- disableForSCP966 removed as it's no longer needed
 
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
 
-v16:AddToggle("AimAssistToggle",{Title="Aim Assist",Description="Toggle aim assist",Default=false,Callback=function(v18) v9=v18;end});
-v16:AddSlider("IntensitySlider",{Title="DPI Reduction",Description="0 = cant move mouse",Default=60,Min=0,Max=300,Rounding=0,Callback=function(v19) v7=v19/100 ;end});
-v16:AddSlider("FollowSlider",{Title="Assist Strength",Description="Aim assist strength",Default=10,Min=1,Max=50,Rounding=0,Callback=function(v20) v8=v20/100 ;end});
-v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Description="Pixel radius of target (idk how to explain better)",Default=40,Min=1,Max=100,Rounding=0,Callback=function(v21) v10=v21;end});
--- Aim Mode Dropdown (Restored)
-v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame","Mouse"},Default="Mouse",Callback=function(v22) v11=v22;end});
+v16:AddToggle("AimAssistToggle",{Title="Aim Assist",Default=false,Callback=function(v18) v9=v18;end});
+v16:AddSlider("FollowSlider",{Title="Assist Strength",Default=10,Min=1,Max=50,Rounding=0,Callback=function(v20) v8=v20/100 ;end});
+v16:AddSlider("FOVSlider",{Title="Aim FOV (px)",Default=40,Min=1,Max=100,Rounding=0,Callback=function(v21) v10=v21;end});
+v16:AddDropdown("AimModeDropdown",{Title="Aim Mode",Values={"CFrame"},Default="CFrame",Callback=function(v22) v11=v22;end});
 v16:AddDropdown("TargetPartDropdown",{Title="Target Part",Values={"Head","HumanoidRootPart"},Default="HumanoidRootPart",Callback=function(v23) v12=v23;end});
-v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Description="Ignore players in your team (doesnt work in some game)",Default=false,Callback=function(v24) v13=v24;end});
-v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Description="Ignore dead players",Default=false,Callback=function(v25) v14=v25;end});
-v16:AddToggle("WallCheckToggle",{Title="Wall Check",Description="Disable aim assist if target is behind a wall",Default=false,Callback=function(value) v48=value;end});
+v16:AddToggle("TeamCheckToggle",{Title="Ignore Team",Default=false,Callback=function(v24) v13=v24;end});
+v16:AddToggle("DeadCheckToggle",{Title="Dead Check",Default=false,Callback=function(v25) v14=v25;end});
+v16:AddToggle("WallCheckToggle",{Title="Wall Check",Default=false,Callback=function(value) v48=value;end});
 
--- New team toggles
-v16:AddToggle("ChaosInsurgencyToggle",{Title="Disable for Chaos Insurgency",Description="Turns off aim assist for Chaos Insurgency members",Default=false,Callback=function(value) disableForChaosInsurgency = value;end});
-v16:AddToggle("FoundationPersonnelToggle",{Title="Disable for Foundation Personnel",Description="Turns off aim assist for Foundation Personnel members",Default=false,Callback=function(value) disableForFoundationPersonnel = value;end});
-v16:AddToggle("MobileTaskForcesToggle",{Title="Disable for Mobile Task Forces / Security Department",Description="Turns off aim assist for MTF and Security Department members",Default=false,Callback=function(value) disableForMobileTaskForces = value;end});
-v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Description="Turns off aim assist for Global Occult Coalition members",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
--- The disableForSCP966 toggle might now be redundant if "SCP" team covers all.
--- If you still need to specifically disable for the SCP-966 *character* within the "SCP" team, keep this.
--- Otherwise, if disabling for the entire "SCP" team is enough, this toggle can be removed or repurposed.
-v16:AddToggle("SCP966Toggle",{Title="Disable for SCP-966 Character (if in SCP team)",Description="Turns off aim assist for SCP-966 character specifically (if part of SCP team)",Default=false,Callback=function(value) disableForSCP966 = value;end});
+-- Simplified and consolidated team toggles
+v16:AddToggle("AlliedGroup1Toggle",{Title="Disable for Allied Group 1",Default=false,Callback=function(value) disableForAlliedGroup1 = value;end});
+v16:AddToggle("AlliedGroup2Toggle",{Title="Disable for Allied Group 2",Default=false,Callback=function(value) disableForAlliedGroup2 = value;end});
+v16:AddToggle("GlobalOccultCoalitionToggle",{Title="Disable for Global Occult Coalition",Default=false,Callback=function(value) disableForGlobalOccultCoalition = value;end});
+-- SCP966Toggle removed
 
 
 -- Player count display setup
@@ -60,24 +51,22 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlayerCounterDisplay"
 screenGui.Parent = v1.LocalPlayer:WaitForChild("PlayerGui")
 
-local yOffset = 0.4 -- Starting position for the first label (relative to screen height)
-local lineHeight = 0.05 -- Height of each line, for spacing
+local yOffset = 0.4
+local lineHeight = 0.05
 
--- Allied Group 1 (Light Blue)
 playerCountDisplay.alliedGroup1.Name = "AlliedGroup1Count"
 playerCountDisplay.alliedGroup1.Text = "0"
-playerCountDisplay.alliedGroup1.TextColor3 = Color3.fromRGB(173, 216, 230) -- Light blue
-playerCountDisplay.alliedGroup1.TextSize = 16 -- Slightly smaller for multiple lines
+playerCountDisplay.alliedGroup1.TextColor3 = Color3.fromRGB(173, 216, 230)
+playerCountDisplay.alliedGroup1.TextSize = 16
 playerCountDisplay.alliedGroup1.BackgroundTransparency = 1
 playerCountDisplay.alliedGroup1.Size = UDim2.new(0, 50, 0, 20)
-playerCountDisplay.alliedGroup1.Position = UDim2.new(0, 10, yOffset, 0) -- 10 pixels from left, dynamic Y
+playerCountDisplay.alliedGroup1.Position = UDim2.new(0, 10, yOffset, 0)
 playerCountDisplay.alliedGroup1.Parent = screenGui
 yOffset = yOffset + lineHeight
 
--- Allied Group 2 (Green)
 playerCountDisplay.alliedGroup2.Name = "AlliedGroup2Count"
 playerCountDisplay.alliedGroup2.Text = "0"
-playerCountDisplay.alliedGroup2.TextColor3 = Color3.fromRGB(0, 255, 0) -- Green
+playerCountDisplay.alliedGroup2.TextColor3 = Color3.fromRGB(0, 255, 0)
 playerCountDisplay.alliedGroup2.TextSize = 16
 playerCountDisplay.alliedGroup2.BackgroundTransparency = 1
 playerCountDisplay.alliedGroup2.Size = UDim2.new(0, 50, 0, 20)
@@ -85,10 +74,9 @@ playerCountDisplay.alliedGroup2.Position = UDim2.new(0, 10, yOffset, 0)
 playerCountDisplay.alliedGroup2.Parent = screenGui
 yOffset = yOffset + lineHeight
 
--- Allied Group 3 (Serpent's Hand + SCP Team) (Red)
 playerCountDisplay.alliedGroup3.Name = "AlliedGroup3Count"
 playerCountDisplay.alliedGroup3.Text = "0"
-playerCountDisplay.alliedGroup3.TextColor3 = Color3.fromRGB(255, 0, 0) -- Red
+playerCountDisplay.alliedGroup3.TextColor3 = Color3.fromRGB(255, 0, 0)
 playerCountDisplay.alliedGroup3.TextSize = 16
 playerCountDisplay.alliedGroup3.BackgroundTransparency = 1
 playerCountDisplay.alliedGroup3.Size = UDim2.new(0, 50, 0, 20)
@@ -96,10 +84,9 @@ playerCountDisplay.alliedGroup3.Position = UDim2.new(0, 10, yOffset, 0)
 playerCountDisplay.alliedGroup3.Parent = screenGui
 yOffset = yOffset + lineHeight
 
--- GOC (Grey)
 playerCountDisplay.goc.Name = "GOCCount"
 playerCountDisplay.goc.Text = "0"
-playerCountDisplay.goc.TextColor3 = Color3.fromRGB(128, 128, 128) -- Grey
+playerCountDisplay.goc.TextColor3 = Color3.fromRGB(128, 128, 128)
 playerCountDisplay.goc.TextSize = 16
 playerCountDisplay.goc.BackgroundTransparency = 1
 playerCountDisplay.goc.Size = UDim2.new(0, 50, 0, 20)
@@ -107,7 +94,7 @@ playerCountDisplay.goc.Position = UDim2.new(0, 10, yOffset, 0)
 playerCountDisplay.goc.Parent = screenGui
 
 
--- Helper function to check line of sight (REVISED)
+-- Helper function to check line of sight
 local function hasLineOfSight(camera, targetPart)
     local origin = camera.CFrame.Position
     local targetPosition = targetPart.Position
@@ -115,44 +102,33 @@ local function hasLineOfSight(camera, targetPart)
     local distance = (targetPosition - origin).Magnitude
 
     local raycastParams = RaycastParams.new()
-    -- Only exclude the local player's character from the raycast
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {v5.Character} 
 
-    -- Perform the raycast slightly past the target to ensure hits
     local raycastResult = workspace:Raycast(origin, direction * (distance + 1), raycastParams)
 
     if raycastResult then
         local hitInstance = raycastResult.Instance
         
-        -- If the raycast hit the targetPart itself or any part within the target's character model,
-        -- then there is a clear line of sight.
         if hitInstance == targetPart or hitInstance:IsDescendantOf(targetPart.Parent) then
             return true
         else
-            -- If it hit something *else* (and that something else is not the local player),
-            -- then there is an obstruction.
             return false
         end
     end
     
-    -- If raycastResult is nil, it means the ray traveled its full path without hitting anything.
-    -- This implies a clear line of sight.
     return true
 end
 
 -- Helper function to check if a player has items in their inventory
--- This will check the player's Backpack and Character for any Tool instances.
 local function playerHasItems(player)
     if not player then return false end
 
-    -- Check Backpack
     local backpack = player:FindFirstChildOfClass("Backpack")
     if backpack and #backpack:GetChildren() > 0 then
         return true
     end
 
-    -- Check Character for equipped tools
     if player.Character then
         for _, child in ipairs(player.Character:GetChildren()) do
             if child:IsA("Tool") then
@@ -172,7 +148,7 @@ local function v17()
     -- Define the groups for player counting and aim assist logic
     local alliedGroup1TeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
     local alliedGroup2TeamNames = {"Class-D", "Chaos Insurgency"};
-    local alliedGroup3TeamNames = {"Serpent's Hand", "SCP"}; -- Now explicitly includes "SCP" team
+    local alliedGroup3TeamNames = {"Serpent's Hand", "SCP"};
     local gocTeamNames = {"Global Occult Coalition"};
 
     -- Initialize counts for the display
@@ -182,11 +158,10 @@ local function v17()
     local currentGOCCount = 0
 
     for v29,v30 in ipairs(v1:GetPlayers()) do
-        -- Skip self and players without a character or target part
         if ((v30~=v5) and v30.Character and v30.Character:FindFirstChild(v12)) then
             local playerTeamName = v5.Team and v5.Team.Name or "";
             local targetTeamName = v30.Team and v30.Team.Name or "";
-            local targetCharacterName = v30.Character.Name; -- Get the character's name
+            local targetCharacterName = v30.Character.Name;
 
             -- Update counts for the display *before* any aim assist specific filtering
             local v33_target = v30.Character:FindFirstChildOfClass("Humanoid");
@@ -197,62 +172,72 @@ local function v17()
                     currentAlliedGroup1Count = currentAlliedGroup1Count + 1
                 elseif table.find(alliedGroup2TeamNames, targetTeamName) then
                     currentAlliedGroup2Count = currentAlliedGroup2Count + 1
-                elseif table.find(alliedGroup3TeamNames, targetTeamName) then -- Check if target is in Serpent's Hand OR SCP team
+                elseif table.find(alliedGroup3TeamNames, targetTeamName) then
                     currentAlliedGroup3Count = currentAlliedGroup3Count + 1
                 elseif table.find(gocTeamNames, targetTeamName) then
                     currentGOCCount = currentGOCCount + 1
                 end
             end
 
-
-            -- TeamCheckToggle (v13): if enabled, ignore players on the *exact same team* as the local player.
             if v13 and (targetTeamName == playerTeamName) then
                 continue;
             end
 
-            -- Check for aim assist disabling between *different* teams within Allied Group 1.
-            local playerInGroup1 = table.find(alliedGroup1TeamNames, playerTeamName);
-            local targetInGroup1 = table.find(alliedGroup1TeamNames, targetTeamName);
-            if playerInGroup1 and targetInGroup1 and (targetTeamName ~= playerTeamName) then
-                continue;
-            end
-
-            -- Check for aim assist disabling between *different* teams within Allied Group 2.
-            local playerInGroup2 = table.find(alliedGroup2TeamNames, playerTeamName);
-            local targetInGroup2 = table.find(alliedGroup2TeamNames, targetTeamName);
-            if playerInGroup2 and targetInGroup2 and (targetTeamName ~= playerTeamName) then
-                continue;
-            end
-
-            -- Individual team toggles: Disable aim assist if the *target's team* is specifically marked for disabling.
-            if (disableForChaosInsurgency and targetTeamName == "Chaos Insurgency") or
-               (disableForFoundationPersonnel and targetTeamName == "Foundation Personnel") or
-               (disableForMobileTaskForces and (targetTeamName == "Mobile Task Forces" or targetTeamName == "Security Department")) or
+            -- New logic for consolidated team toggles
+            if (disableForAlliedGroup1 and table.find(alliedGroup1TeamNames, targetTeamName)) or
+               (disableForAlliedGroup2 and table.find(alliedGroup2TeamNames, targetTeamName)) or
                (disableForGlobalOccultCoalition and targetTeamName == "Global Occult Coalition") then
                 continue;
             end
 
-            -- REVISED SCP AIM ASSIST LOGIC: Check team "SCP" and then inventory
+            -- Main SCP team check, which handles the previous SCP-966 scenario
             if targetTeamName == "SCP" then
                 if not playerHasItems(v30) then
-                    continue; -- Skip aim assist if SCP player has no items
+                    continue;
                 end
             end
 
-            -- SCP-966 CHECK INTEGRATION (still kept in case specific character check is needed within SCP team)
-            if disableForSCP966 and (targetCharacterName == "SCP-966") then
-                continue; -- Skip SCP-966 if the toggle is on
-            end
+            -- SCP966 specific check removed
 
-            -- DeadCheckToggle (v14): if enabled, ignore dead players.
             local v33=v30.Character:FindFirstChildOfClass("Humanoid");
             if (v14 and v33 and (v33.Health<=0)) then continue;end
 
-            -- Get the target part and its screen position.
-            local v34=v30.Character[v12]; -- Target part (e.g., HumanoidRootPart)
-            local v35,v36=v4:WorldToViewportPoint(v34.Position); -- v35 is Vector3 screen position, v36 is isOnScreen boolean
+            local v34=v30.Character[v12];
+            local v35,v36=v4:WorldToViewportPoint(v34.Position);
 
-            if v36 then -- If the target part is on screen
-                -- WallCheckToggle (v48): if enabled, ignore targets behind walls.
-                -- This uses the REVISED hasLineOfSight function.
-                if v48 and not hasLineOfSight(v
+            if v36 then
+                if v48 and not hasLineOfSight(v4, v34) then
+                    continue
+                end
+
+                local v39=Vector2.new(v35.X,v35.Y);
+                local v40=(v39-v28).Magnitude;
+
+                if (v40<v27) then
+                    v27=v40;
+                    v26=v34;
+                end
+            end
+        end
+    end
+
+    -- Update the display labels with the new counts
+    playerCountDisplay.alliedGroup1.Text = "MTF/FDN/SEC: " .. tostring(currentAlliedGroup1Count)
+    playerCountDisplay.alliedGroup2.Text = "Class-D/Chaos Ins: " .. tostring(currentAlliedGroup2Count)
+    playerCountDisplay.alliedGroup3.Text = "SH/SCP: " .. tostring(currentAlliedGroup3Count)
+    playerCountDisplay.goc.Text = "GOC: " .. tostring(currentGOCCount)
+
+    return v26;
+end
+
+-- RenderStepped connection to execute aim assist logic every frame.
+v2.RenderStepped:Connect(function()
+    if v9 then
+        local v31=v17();
+        if v31 then
+            -- Only CFrame mode is available now, no mouse manipulation.
+            local v41=(v31.Position-v4.CFrame.Position).Unit;
+            v4.CFrame=v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position,v4.CFrame.Position + v41 ),v8);
+        end
+    end
+end);
