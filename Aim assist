@@ -240,12 +240,11 @@ local function getTeamGroup(teamName)
     return nil -- No group found
 end
 
-local function findBestTarget()
+                local function findBestTarget()
     local bestTargetPart = nil;
     local minFovDistance = v10;
-    local screenCenter = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
+    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
 
-    -- Define team names directly here for clarity in this function's scope
     local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
     local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
     local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
@@ -259,23 +258,32 @@ local function findBestTarget()
     local localPlayerTeamName = v5.Team and v5.Team.Name or "";
     local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
 
+    -- Debug: Check if local player team is identified
+    print("Local Player Team Name:", localPlayerTeamName);
+    print("Local Player Team Group:", localPlayerTeamGroup);
 
     for _, targetPlayer in ipairs(v1:GetPlayers()) do
-        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
+        -- Debug: Player processing start
+        print("Processing player:", targetPlayer.Name);
+
+        if (targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12) then
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
             local targetTeamGroup = getTeamGroup(targetTeamName);
-            local targetPlayerName = string.lower(targetPlayer.Name); -- Get target's name in lowercase
+            local targetPlayerName = string.lower(targetPlayer.Name);
+
+            -- Debug: Target player team and name info
+            print("  Target Name:", targetPlayer.Name, "Team:", targetTeamName, "Group:", targetTeamGroup);
 
             -- NEW: Check if the target player's username is in the excludedUsernames list
             if table.find(excludedUsernames, targetPlayerName) then
-                continue; -- Skip this player if their username is excluded
+                print("  SKIPPED:", targetPlayer.Name, "- Excluded by username.");
+                continue;
             end
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
 
             if isAlive then
-                -- Update counts with new names
                 if targetTeamGroup == "Foundation" then
                     currentFoundationCount = currentFoundationCount + 1
                 elseif targetTeamGroup == "Counter-forces" then
@@ -288,60 +296,82 @@ local function findBestTarget()
             end
 
             -- Layer 1: Auto-disable within my own group.
-            -- If the local player is in a known group, and the target is in the SAME group, skip this target.
-            -- This handles the Chaos Insurgency vs Class-D scenario when you are one of them.
             if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
-                continue; -- Do NOT aim at players in your own "allied" group.
+                print("  SKIPPED:", targetPlayer.Name, "- Same group as local player.");
+                continue;
             end
 
             -- Layer 2: Manual "Ignore Exact Team" toggle (v13)
             if v13 and (targetTeamName == localPlayerTeamName) then
-                continue; -- Skip if "Ignore Exact Team" is ON and target is on the exact same team.
+                print("  SKIPPED:", targetPlayer.Name, "- Same exact team (Ignore Exact Team toggle ON).");
+                continue;
             end
-            
+
             -- Layer 3: Manual "Disable for Group" toggles.
-            -- These override and prevent aiming at ANYONE in the specified group, regardless of local player's team.
-            -- Using new disable variables and group names
             if (disableForFoundation and targetTeamGroup == "Foundation") then
+                print("  SKIPPED:", targetPlayer.Name, "- Disabled for Foundation group.");
                 continue;
             end
             if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
+                print("  SKIPPED:", targetPlayer.Name, "- Disabled for Counter-forces group.");
                 continue;
             end
             if (disableForAnomalies and targetTeamGroup == "Anomalies") then
+                print("  SKIPPED:", targetPlayer.Name, "- Disabled for Anomalies group.");
                 continue;
             end
             if (disableForGOC and targetTeamGroup == "GOC") then
+                print("  SKIPPED:", targetPlayer.Name, "- Disabled for GOC group.");
                 continue;
             end
 
             -- Specific handling for SCP (always skip if they don't have items)
             if targetTeamName == "SCP" then
-                if not playerHasItems(targetPlayer) then continue; end
+                if not playerHasItems(targetPlayer) then
+                    print("  SKIPPED:", targetPlayer.Name, "- SCP without items.");
+                    continue;
+                end
             end
 
-            if (v14 and targetHumanoid and (targetHumanoid.Health <= 0)) then continue; end
+            if v14 and (not isAlive) then -- Corrected logic: if DeadCheck is ON and target is NOT alive
+                print("  SKIPPED:", targetPlayer.Name, "- Dead (Dead Check toggle ON).");
+                continue;
+            end
 
             local targetPart = targetPlayer.Character[v12];
+            if not targetPart then
+                print("  SKIPPED:", targetPlayer.Name, "- Target part ("..v12..") not found.");
+                continue;
+            end
+
             local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
 
             if isOnScreen then
-                if v48 and not hasLineOfSight(v4, targetPart) then continue end
+                print("  Target:", targetPlayer.Name, "- Is on screen.");
+                if v48 and not hasLineOfSight(v4, targetPart) then
+                    print("  SKIPPED:", targetPlayer.Name, "- No line of sight (Wall Check toggle ON).");
+                    continue
+                end
 
-                local targetScreenPosition=Vector2.new(worldToViewportPoint.X,worldToViewportPoint.Y);
-                local fovDistance=(targetScreenPosition-screenCenter).Magnitude;
+                local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
+                local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
+                print("  Target:", targetPlayer.Name, "- FOV Distance:", fovDistance, "Min FOV Distance:", minFovDistance);
 
                 if (fovDistance < minFovDistance) then
                     minFovDistance = fovDistance;
                     bestTargetPart = targetPart;
+                    print("  Best Target Candidate Found:", targetPlayer.Name);
                 end
+            else
+                print("  SKIPPED:", targetPlayer.Name, "- Not on screen.");
             end
+        else
+            print("  SKIPPED:", targetPlayer.Name, "- Invalid character or target part not found for v12.");
         end
     end
 
     local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if currentScreenGui then
-        -- Update label text assignments with new names
         local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
         if labelFoundation then labelFoundation.Text = tostring(currentFoundationCount) end
 
@@ -354,16 +384,32 @@ local function findBestTarget()
         local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
         if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
     end
+    
+    if bestTargetPart then
+        print("Final Best Target Found:", bestTargetPart.Parent.Name);
+    else
+        print("No Best Target Found for this frame.");
+    end
 
     return bestTargetPart;
 end
 
 v2.RenderStepped:Connect(function()
     if v9 then
+        -- Debug: Aim Assist is ON
+        print("Aim Assist is ON. Looking for target...");
         local target = findBestTarget();
         if target then
+            -- Debug: Target found, applying aim assist
+            print("Target found by RenderStepped:", target.Parent.Name);
             local direction = (target.Position - v4.CFrame.Position).Unit;
             v4.CFrame = v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position, v4.CFrame.Position + direction), v8);
+        else
+            -- Debug: No target found
+            print("Aim Assist ON, but no target found.");
         end
+    else
+        -- Debug: Aim Assist is OFF
+        -- print("Aim Assist is OFF."); -- Commented out to avoid spamming console when off
     end
 end);
