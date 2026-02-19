@@ -1,0 +1,3 @@
+local v0 = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))();
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DarkPhantom342/Better-aim-assist-for-retrobreach/refs/heads/main/Aim%20assist"))();
+loadstring(game:HttpGet("https://raw.githubusercontent.com/DarkPhantom342/Better-aim-assist-for-retrobreach/refs/heads/main/List"))();
