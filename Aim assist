@@ -17,13 +17,9 @@ local disableForFoundation = false;
 local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
+local disableForSCP = false; -- NEW: Toggle for SCP
 
--- Blacklist variables
-local excludedUsernames = {};
-local usernameInputBox = nil; -- Will be assigned later when the UI element is created
-local playerListContainer = nil; -- New variable for the player list UI container
-
-local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 480), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert}); -- Increased height for new section
+local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 380), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
@@ -36,155 +32,7 @@ v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callba
 v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
-
--- Blacklist UI Section
-local blacklistSection = v16:AddSection("Blacklist by Name");
-
--- Input for adding/removing by typing
-usernameInputBox = blacklistSection:AddInput("UsernameInput", {
-    Title = "Manually Add/Remove",
-    Placeholder = "Enter username...",
-    Default = "",
-    Callback = function(value)
-    end
-});
-
-blacklistSection:AddButton("AddUsernameButton", {
-    Title = "Add to Blacklist (Manual)",
-    Callback = function()
-        local username = usernameInputBox.Value;
-        if username and username ~= "" then
-            local lowerCaseUsername = string.lower(username);
-            if not table.find(excludedUsernames, lowerCaseUsername) then
-                table.insert(excludedUsernames, lowerCaseUsername);
-                v15:Notify({Title = "Blacklist", Content = username .. " added.", Duration = 3});
-                usernameInputBox:SetValue("");
-                -- Refresh the dynamic player list if it exists
-                if playerListContainer then updatePlayerListDisplay(); end
-            else
-                v15:Notify({Title = "Blacklist", Content = username .. " is already in the list.", Duration = 3});
-            end
-        end
-    end
-});
-
-blacklistSection:AddButton("RemoveUsernameButton", {
-    Title = "Remove from Blacklist (Manual)",
-    Callback = function()
-        local username = usernameInputBox.Value;
-        if username and username ~= "" then
-            local lowerCaseUsername = string.lower(username);
-            local foundIndex = nil;
-            for i, v in ipairs(excludedUsernames) do
-                if v == lowerCaseUsername then
-                    foundIndex = i;
-                    break;
-                end
-            end
-            if foundIndex then
-                table.remove(excludedUsernames, foundIndex);
-                v15:Notify({Title = "Blacklist", Content = username .. " removed.", Duration = 3});
-                usernameInputBox:SetValue("");
-                -- Refresh the dynamic player list if it exists
-                if playerListContainer then updatePlayerListDisplay(); end
-            else
-                v15:Notify({Title = "Blacklist", Content = username .. " not found in the list.", Duration = 3});
-            end
-        end
-    end
-});
-
--- Dynamic Player List Section
-local playerSelectionSection = v16:AddSection("Blacklist by Selection");
-playerListContainer = playerSelectionSection:AddParagraph("PlayerListParagraph", {Title = "Current Players", Content = ""});
-playerListContainer.Frame.BackgroundTransparency = 0.9; -- Make it slightly visible
-playerListContainer.Frame.BackgroundColor3 = Color3.fromRGB(30,30,30); -- Dark background
-
-local playerButtons = {}; -- To keep track of player buttons for updating
-
-local function updatePlayerListDisplay()
-    -- Clear existing buttons
-    for _, btn in pairs(playerButtons) do
-        btn.Frame:Destroy();
-    end
-    playerButtons = {};
-
-    local currentPlayers = v1:GetPlayers();
-    local numPlayersAdded = 0;
-
-    -- Create a scrolling frame for the player list
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 0
-    scrollFrame.CanvasSize = UDim2.new(0,0,0,0) -- Will be adjusted by UIListLayout
-    scrollFrame.Parent = playerListContainer.Frame -- Parent to the paragraph's frame
-
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.FillDirection = Enum.FillDirection.Vertical
-    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = scrollFrame
-
-    for _, player in ipairs(currentPlayers) do
-        if player ~= v5 then -- Don't list the local player
-            local playerName = player.Name;
-            local lowerCasePlayerName = string.lower(playerName);
-            local isBlacklisted = table.find(excludedUsernames, lowerCasePlayerName) ~= nil;
-
-            local button = v0.Elements.Button("playerButton_" .. playerName, {
-                Title = (isBlacklisted and "❌ " or "") .. playerName,
-                Description = "", -- No description needed
-            }, scrollFrame, true); -- Pass scrollFrame as parent, true for hover effects
-
-            -- Adjust button appearance
-            button.Frame.Size = UDim2.new(1, -10, 0, 25); -- Width relative, fixed height
-            button.Frame.Position = UDim2.new(0, 5, 0, 0); -- Slightly inset
-            button.Title.TextXAlignment = Enum.TextXAlignment.Left;
-            button.Frame.BackgroundTransparency = isBlacklisted and 0.7 or 0.8;
-            button.Frame.BackgroundColor3 = isBlacklisted and Color3.fromRGB(70, 0, 0) or Color3.fromRGB(50,50,50);
-            button.Frame.UIStroke.Color = isBlacklisted and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(80,80,80);
-
-            v0.AddSignal(button.Frame.MouseButton1Click, function()
-                if isBlacklisted then
-                    -- Remove from blacklist
-                    local foundIndex = nil;
-                    for i, v in ipairs(excludedUsernames) do
-                        if v == lowerCasePlayerName then
-                            foundIndex = i;
-                            break;
-                        end
-                    end
-                    if foundIndex then
-                        table.remove(excludedUsernames, foundIndex);
-                        v15:Notify({Title = "Blacklist", Content = playerName .. " removed.", Duration = 3});
-                    end
-                else
-                    -- Add to blacklist
-                    table.insert(excludedUsernames, lowerCasePlayerName);
-                    v15:Notify({Title = "Blacklist", Content = playerName .. " added.", Duration = 3});
-                end
-                updatePlayerListDisplay(); -- Refresh the list
-            end);
-            playerButtons[player] = button;
-            numPlayersAdded = numPlayersAdded + 1;
-        end
-    end
-    -- Update CanvasSize after all buttons are added
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
-end
-
--- Refresh button for the player list
-playerSelectionSection:AddButton("RefreshPlayerList", {
-    Title = "Refresh Player List",
-    Callback = function()
-        updatePlayerListDisplay();
-        v15:Notify({Title = "Player List", Content = "List refreshed.", Duration = 2});
-    end
-});
-
--- Initial display of the player list
-updatePlayerListDisplay();
+v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end}); -- NEW TOGGLE
 
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
@@ -338,19 +186,12 @@ local function findBestTarget()
         if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
             local targetTeamGroup = getTeamGroup(targetTeamName);
-            local targetPlayerName = string.lower(targetPlayer.Name);
-
-            -- BLACKLIST CHECK
-            if table.find(excludedUsernames, targetPlayerName) then
-                continue;
-            end
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
 
             if isAlive then
                 if targetTeamGroup == "Foundation" then
-
                     currentFoundationCount = currentFoundationCount + 1
                 elseif targetTeamGroup == "Counter-forces" then
                     currentCounterforcesCount = currentCounterforcesCount + 1
@@ -379,6 +220,11 @@ local function findBestTarget()
                 continue;
             end
             if (disableForGOC and targetTeamGroup == "GOC") then
+                continue;
+            end
+            
+            -- NEW: Check for Disable for SCP toggle
+            if (disableForSCP and targetTeamName == "SCP") then
                 continue;
             end
 
