@@ -1,0 +1,228 @@
+local v0 = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))();
+
+-- Access the main UI window from the already loaded aim assist script
+-- This assumes the main aim assist script has already run and created v15
+-- We'll try to find it, or create a placeholder if it's not ready
+local aimAssistWindow = nil
+repeat
+    aimAssistWindow = v0:FindWindowByTitle("Aim Assist") -- Assuming "Aim Assist" is the title
+    if not aimAssistWindow then
+        wait(0.1) -- Wait a bit for the main script to initialize
+    end
+until aimAssistWindow ~= nil
+
+local mainTab = aimAssistWindow:FindTabByTitle("Main") -- Assuming "Main" is the tab title
+
+-- Blacklist variables and UI elements
+local excludedUsernames = {};
+local usernameInputBox = nil;
+
+if mainTab then
+    local exclusionSection = mainTab:AddSection("Blacklist");
+
+    usernameInputBox = exclusionSection:AddInput("UsernameInput", {
+        Title = "Username Blacklist",
+        Placeholder = "Enter username...",
+        Default = "",
+        Callback = function(value)
+            -- No action needed here, as value is read by buttons
+        end
+    });
+
+    exclusionSection:AddButton("AddUsernameButton", {
+        Title = "Add to Blacklist",
+        Callback = function()
+            local username = usernameInputBox.Value;
+            if username and username ~= "" then
+                local lowerCaseUsername = string.lower(username);
+                if not table.find(excludedUsernames, lowerCaseUsername) then
+                    table.insert(excludedUsernames, lowerCaseUsername);
+                    aimAssistWindow:Notify({Title = "Blacklist", Content = username .. " added.", Duration = 3});
+                    usernameInputBox:SetValue("");
+                else
+                    aimAssistWindow:Notify({Title = "Blacklist", Content = username .. " is already in the list.", Duration = 3});
+                end
+            end
+        end
+    });
+
+    exclusionSection:AddButton("RemoveUsernameButton", {
+        Title = "Remove from Blacklist",
+        Callback = function()
+            local username = usernameInputBox.Value;
+            if username and username ~= "" then
+                local lowerCaseUsername = string.lower(username);
+                local foundIndex = nil;
+                for i, v in ipairs(excludedUsernames) do
+                    if v == lowerCaseUsername then
+                        foundIndex = i;
+                        break;
+                    end
+                end
+                if foundIndex then
+                    table.remove(excludedUsernames, foundIndex);
+                    aimAssistWindow:Notify({Title = "Blacklist", Content = username .. " removed.", Duration = 3});
+                    usernameInputBox:SetValue("");
+                else
+                    aimAssistWindow:Notify({Title = "Blacklist", Content = username .. " not found in the list.", Duration = 3});
+                end
+            end
+        end
+    });
+end
+
+-- Override the findBestTarget function from the main script
+-- This requires the main script's findBestTarget to be accessible globally or through a shared environment.
+-- Assuming the main script defines findBestTarget globally or it's within the same environment context.
+
+-- A safer way would be to wrap the original function, if possible.
+-- Let's try to get a reference to the existing findBestTarget function.
+
+-- This part is tricky if findBestTarget is purely local in the other script.
+-- For this to work, the original `findBestTarget` in the main script must be global or returned by its loadstring.
+-- Since the current main script doesn't explicitly make it global, we might need a slight modification
+-- to the *main script* to expose `findBestTarget` or to return its environment.
+
+-- Given how the scripts are typically structured, a simple global override might work if executed after the main script.
+-- If `findBestTarget` is defined with `local function findBestTarget()`, it won't be accessible.
+-- If it's defined simply as `function findBestTarget()`, it becomes global.
+
+-- Let's assume for now that the main script makes `findBestTarget` globally accessible,
+-- or that this second loadstring executes in the same environment where the first script's locals are resolved.
+-- This is a common, though sometimes fragile, aspect of Roblox loadstring environments.
+
+-- The most robust solution would be to modify the *main script* slightly to:
+-- `_G.findBestTarget_Original = findBestTarget` after its definition.
+-- And then this script would do:
+-- `local original_findBestTarget = _G.findBestTarget_Original`
+-- Then define a NEW findBestTarget that calls the original.
+
+-- For now, let's try direct global access or environment-sharing assumption:
+
+local original_findBestTarget = _G.findBestTarget -- Attempt to get global reference
+if not original_findBestTarget then
+    -- Fallback: If not globally available, we might need to assume it's in the current environment
+    -- and that `loadstring` provides shared locals, which is often not true across separate loadstrings.
+    -- This is a point of potential failure if the environment is strictly sandboxed.
+    warn("Could not find global 'findBestTarget'. Blacklist might not apply correctly. Ensure main script exposes findBestTarget globally.")
+    -- If `findBestTarget` is truly local to the first loadstring, this approach needs the main script to change.
+    -- Assuming a shared environment where `findBestTarget` might still be resolvable by name.
+    -- If this fails, the main script *must* expose `findBestTarget` explicitly (e.g., `_G.findBestTarget = findBestTarget`).
+end
+
+
+-- Re-define/wrap findBestTarget to include the blacklist check
+_G.findBestTarget = function() -- Defining globally to ensure it replaces the previous one
+    local bestTargetPart = nil;
+    local minFovDistance = _G.v10; -- Accessing global v10 from main script
+    local screenCenter = Vector2.new(_G.v4.ViewportSize.X / 2, _G.v4.ViewportSize.Y / 2); -- Accessing global v4
+
+    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
+    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
+    local gocTeamNames = {"Global Occult Coalition"};
+
+    local currentFoundationCount = 0
+    local currentCounterforcesCount = 0
+    local currentAnomaliesCount = 0
+    local currentGOCCount = 0
+
+    local localPlayerTeamName = _G.v5.Team and _G.v5.Team.Name or ""; -- Accessing global v5
+    local localPlayerTeamGroup = _G.getTeamGroup(localPlayerTeamName); -- Accessing global getTeamGroup
+
+    for _, targetPlayer in ipairs(_G.v1:GetPlayers()) do -- Accessing global v1
+        if ((targetPlayer ~= _G.v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(_G.v12)) then -- Accessing global v5, v12
+            local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
+            local targetTeamGroup = _G.getTeamGroup(targetTeamName); -- Accessing global getTeamGroup
+            local targetPlayerName = string.lower(targetPlayer.Name);
+
+            -- BLACKLIST CHECK
+            if table.find(excludedUsernames, targetPlayerName) then
+                continue;
+            end
+
+            local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
+            local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
+
+            if isAlive then
+                if targetTeamGroup == "Foundation" then
+                    currentFoundationCount = currentFoundationCount + 1
+                elseif targetTeamGroup == "Counter-forces" then
+                    currentCounterforcesCount = currentCounterforcesCount + 1
+                elseif targetTeamGroup == "Anomalies" then
+                    currentAnomaliesCount = currentAnomaliesCount + 1
+                elseif targetTeamGroup == "GOC" then
+                    currentGOCCount = currentGOCCount + 1
+                end
+            end
+
+            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
+                continue;
+            end
+
+            if _G.v13 and (targetTeamName == localPlayerTeamName) then -- Accessing global v13
+                continue;
+            end
+
+            if (disableForFoundation and targetTeamGroup == "Foundation") then
+                continue;
+            end
+            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
+                continue;
+            end
+            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
+                continue;
+            end
+            if (disableForGOC and targetTeamGroup == "GOC") then
+                continue;
+            end
+
+            if targetTeamName == "SCP" then
+                if not _G.playerHasItems(targetPlayer) then -- Accessing global playerHasItems
+                    continue;
+                end
+            end
+
+            if (_G.v14 and (not isAlive)) then -- Accessing global v14
+                continue;
+            end
+
+            local targetPart = targetPlayer.Character[_G.v12]; -- Accessing global v12
+            if not targetPart then
+                 continue;
+            end
+
+            local worldToViewportPoint, isOnScreen = _G.v4:WorldToViewportPoint(targetPart.Position); -- Accessing global v4
+
+            if isOnScreen then
+                if _G.v48 and not _G.hasLineOfSight(_G.v4, targetPart) then -- Accessing global v48, hasLineOfSight, v4
+                    continue
+                end
+                
+                local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
+                local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
+
+                if (fovDistance < minFovDistance) then
+                    minFovDistance = fovDistance;
+                    bestTargetPart = targetPart;
+                end
+            end
+        end
+    end
+
+    local currentScreenGui = _G.v5.PlayerGui:FindFirstChild("PlayerCounterDisplay") -- Accessing global v5
+    if currentScreenGui then
+        local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
+        if labelFoundation then labelFoundation.Text = tostring(currentFoundationCount) end
+
+        local labelCounterforces = currentScreenGui:FindFirstChild("CounterforcesCount")
+        if labelCounterforces then labelCounterforces.Text = tostring(currentCounterforcesCount) end
+
+        local labelAnomalies = currentScreenGui:FindFirstChild("AnomaliesCount")
+        if labelAnomalies then labelAnomalies.Text = tostring(currentAnomaliesCount) end
+
+        local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
+        if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
+    end
+    return bestTargetPart;
+end;
