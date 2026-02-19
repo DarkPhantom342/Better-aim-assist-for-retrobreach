@@ -18,9 +18,8 @@ local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
 
--- Blacklist variables removed
-
 local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 380), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
+_G.FluentAimAssistWindow = v15; -- <<< ADDED THIS LINE >>>
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
@@ -33,8 +32,6 @@ v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callba
 v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
-
--- Blacklist section and its buttons/input removed
 
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
@@ -129,7 +126,6 @@ local function hasLineOfSight(camera, targetPart)
 
     if raycastResult then
         local hitInstance = raycastResult.Instance
-        print("Raycast hit for " .. targetPart.Parent.Name .. ": " .. hitInstance.Name .. " (Expected: " .. targetPart.Name .. ")"); -- DEBUG PRINT
         if hitInstance == targetPart or (targetPart.Parent and hitInstance:IsDescendantOf(targetPart.Parent)) then
             return true
         else
@@ -196,8 +192,6 @@ local function findBestTarget()
             local targetTeamGroup = getTeamGroup(targetTeamName);
             local targetPlayerName = string.lower(targetPlayer.Name);
 
-            -- Blacklist check removed
-
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
 
@@ -214,47 +208,38 @@ local function findBestTarget()
             end
 
             if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to same group.");
                 continue;
             end
 
             if v13 and (targetTeamName == localPlayerTeamName) then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Team Check.");
                 continue;
             end
 
             if (disableForFoundation and targetTeamGroup == "Foundation") then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Foundation toggle.");
                 continue;
             end
             if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Counter-forces toggle.");
                 continue;
             end
             if (disableForAnomalies and targetTeamGroup == "Anomalies") then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Anomalies toggle.");
                 continue;
             end
             if (disableForGOC and targetTeamGroup == "GOC") then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to GOC toggle.");
                 continue;
             end
 
             if targetTeamName == "SCP" then
                 if not playerHasItems(targetPlayer) then
-                    print("DEBUG: Skipped " .. targetPlayer.Name .. " (SCP, no items).");
                     continue;
                 end
             end
 
             if (v14 and (not isAlive)) then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " (Dead Check).");
                 continue;
             end
 
             local targetPart = targetPlayer.Character[v12];
             if not targetPart then
-                 print("DEBUG: Skipped " .. targetPlayer.Name .. ", target part " .. v12 .. " not found.");
                  continue;
             end
 
@@ -262,25 +247,17 @@ local function findBestTarget()
 
             if isOnScreen then
                 if v48 and not hasLineOfSight(v4, targetPart) then
-                    print("DEBUG: Skipped " .. targetPlayer.Name .. " (Wall Check).");
                     continue
                 end
                 
-                print("DEBUG: " .. targetPlayer.Name .. " is visible and passed all checks.");
-
                 local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
                 local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
 
                 if (fovDistance < minFovDistance) then
                     minFovDistance = fovDistance;
                     bestTargetPart = targetPart;
-                    print("DEBUG: Best target candidate updated to " .. targetPlayer.Name);
                 end
-            else
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " (Not on screen).");
             end
-        else
-            print("DEBUG: Skipped " .. targetPlayer.Name .. " (Invalid character or target part " .. v12 .. " missing).");
         end
     end
 
@@ -297,11 +274,6 @@ local function findBestTarget()
 
         local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
         if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
-    end
-    if bestTargetPart then
-        print("DEBUG: findBestTarget returning " .. bestTargetPart.Parent.Name);
-    else
-        print("DEBUG: findBestTarget returning nil (No target found).");
     end
     return bestTargetPart;
 end
