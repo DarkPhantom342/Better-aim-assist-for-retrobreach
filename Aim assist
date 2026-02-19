@@ -20,6 +20,11 @@ local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
 
+-- NEW: Table to store excluded usernames
+local excludedUsernames = {};
+-- NEW: Variable to hold the text input for usernames
+local usernameInputBox = nil;
+
 -- Fluent GUI setup
 local v15=v0:CreateWindow({Title="Aim Assist",SubTitle="by AGTV",TabWidth=150,Size=UDim2.fromOffset(450,380),Acrylic=false,Theme="Dark",MinimizeKey=Enum.KeyCode.Insert});
 local v16=v15:AddTab({Title="Main",Icon="target"});
@@ -39,6 +44,62 @@ v16:AddToggle("CounterforcesToggle",{Title="Disable for Counter-forces",Default=
 v16:AddToggle("AnomaliesToggle",{Title="Disable for Anomalies",Default=false,Callback=function(value) disableForAnomalies = value;end});
 v16:AddToggle("GOCToggle",{Title="Disable for GOC",Default=false,Callback=function(value) disableForGOC = value;end});
 
+-- NEW: Section for Username Exclusion
+local exclusionSection = v16:AddSection("Username Exclusion");
+
+-- NEW: Text input for usernames
+usernameInputBox = exclusionSection:AddInput("UsernameInput", {
+    Title = "Username to Exclude",
+    Placeholder = "Enter username...",
+    Default = "",
+    Callback = function(value)
+        -- You could potentially validate input here, but for now, just stores it in the textbox
+    end
+});
+
+-- NEW: Button to add username to exclusion list
+exclusionSection:AddButton("AddUsernameButton", {
+    Title = "Add to Exclusion List",
+    Callback = function()
+        local username = usernameInputBox.Value;
+        if username and username ~= "" then
+            -- Convert to lowercase for case-insensitive comparison
+            local lowerCaseUsername = string.lower(username);
+            if not table.find(excludedUsernames, lowerCaseUsername) then
+                table.insert(excludedUsernames, lowerCaseUsername);
+                v15:Notify({Title = "Exclusion List", Content = username .. " added.", Duration = 3});
+                usernameInputBox:SetValue(""); -- Clear the input box
+            else
+                v15:Notify({Title = "Exclusion List", Content = username .. " is already in the list.", Duration = 3});
+            end
+        end
+    end
+});
+
+-- NEW: Button to remove username from exclusion list
+exclusionSection:AddButton("RemoveUsernameButton", {
+    Title = "Remove from Exclusion List",
+    Callback = function()
+        local username = usernameInputBox.Value;
+        if username and username ~= "" then
+            local lowerCaseUsername = string.lower(username);
+            local foundIndex = nil;
+            for i, v in ipairs(excludedUsernames) do
+                if v == lowerCaseUsername then
+                    foundIndex = i;
+                    break;
+                end
+            end
+            if foundIndex then
+                table.remove(excludedUsernames, foundIndex);
+                v15:Notify({Title = "Exclusion List", Content = username .. " removed.", Duration = 3});
+                usernameInputBox:SetValue(""); -- Clear the input box
+            else
+                v15:Notify({Title = "Exclusion List", Content = username .. " not found in the list.", Duration = 3});
+            end
+        end
+    end
+});
 
 -- Player count display setup: Templates for labels
 -- Renamed label templates for consistency
@@ -176,13 +237,13 @@ local function getTeamGroup(teamName)
             return "GOC"
         end
     end
-    return nil -- No group found
+    return nil; -- No group found
 end
 
 local function findBestTarget()
     local bestTargetPart = nil;
     local minFovDistance = v10;
-    local screenCenter = Vector2.new(v4.ViewportSize.X/2 ,v4.ViewportSize.Y/2 );
+    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
 
     -- Define team names directly here for clarity in this function's scope
     local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
@@ -203,6 +264,7 @@ local function findBestTarget()
         if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
             local targetTeamGroup = getTeamGroup(targetTeamName);
+            local targetPlayerName = string.lower(targetPlayer.Name); -- Get target's name in lowercase
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
@@ -220,6 +282,11 @@ local function findBestTarget()
                 end
             end
 
+            -- NEW: Check if the target player's username is in the excludedUsernames list
+            if table.find(excludedUsernames, targetPlayerName) then
+                continue; -- Skip this player if their username is excluded
+            end
+
             -- Layer 1: Auto-disable within my own group.
             -- If the local player is in a known group, and the target is in the SAME group, skip this target.
             -- This handles the Chaos Insurgency vs Class-D scenario when you are one of them.
@@ -231,7 +298,7 @@ local function findBestTarget()
             if v13 and (targetTeamName == localPlayerTeamName) then
                 continue; -- Skip if "Ignore Exact Team" is ON and target is on the exact same team.
             end
-            
+
             -- Layer 3: Manual "Disable for Group" toggles.
             -- These override and prevent aiming at ANYONE in the specified group, regardless of local player's team.
             -- Using new disable variables and group names
@@ -249,12 +316,35 @@ local function findBestTarget()
             end
 
             -- Specific handling for SCP (always skip if they don't have items)
+            -- This logic remains, but now it's AFTER the username exclusion check.
             if targetTeamName == "SCP" then
                 if not playerHasItems(targetPlayer) then continue; end
             end
 
             if (v14 and targetHumanoid and (targetHumanoid.Health <= 0)) then continue; end
 
+            local targetPart = targetPlayer.Character[v12];
+            local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
+
+            if isOnScreen then
+                if v48 and not hasLineOfSight(v4, targetPart) then continue end
+
+                local targetScreenPosition=Vector2.new(worldToViewportPoint.X,worldToViewportPoint.Y);
+                local fovDistance=(targetScreenPosition-screenCenter).Magnitude;
+
+                if (fovDistance < minFovDistance) then
+                    minFovDistance = fovDistance;
+                    bestTargetPart = targetPart;
+                end
+            end
+        end
+    end
+
+    local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
+    if currentScreenGui then
+        -- Update label text assignments with new names
+        local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
+        if labelFoundation then labelFoundation.Text = tostring(current
             local targetPart = targetPlayer.Character[v12];
             local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
 
