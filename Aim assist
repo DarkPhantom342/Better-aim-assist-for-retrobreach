@@ -39,6 +39,67 @@ v16:AddToggle("CounterforcesToggle",{Title="Disable for Counter-forces",Default=
 v16:AddToggle("AnomaliesToggle",{Title="Disable for Anomalies",Default=false,Callback=function(value) disableForAnomalies = value;end});
 v16:AddToggle("GOCToggle",{Title="Disable for GOC",Default=false,Callback=function(value) disableForGOC = value;end});
 
+-- NEW: Table to store excluded usernames
+local excludedUsernames = {};
+-- NEW: Variable to hold the text input for usernames
+local usernameInputBox = nil;
+
+-- NEW: Section for Username Exclusion
+local exclusionSection = v16:AddSection("Username Exclusion");
+
+-- NEW: Text input for usernames
+usernameInputBox = exclusionSection:AddInput("UsernameInput", {
+    Title = "Username to Exclude",
+    Placeholder = "Enter username...",
+    Default = "",
+    Callback = function(value)
+        -- You could potentially validate input here, but for now, just stores it in the textbox
+    end
+});
+
+-- NEW: Button to add username to exclusion list
+exclusionSection:AddButton("AddUsernameButton", {
+    Title = "Add to Exclusion List",
+    Callback = function()
+        local username = usernameInputBox.Value;
+        if username and username ~= "" then
+            -- Convert to lowercase for case-insensitive comparison
+            local lowerCaseUsername = string.lower(username);
+            if not table.find(excludedUsernames, lowerCaseUsername) then
+                table.insert(excludedUsernames, lowerCaseUsername);
+                v15:Notify({Title = "Exclusion List", Content = username .. " added.", Duration = 3});
+                usernameInputBox:SetValue(""); -- Clear the input box
+            else
+                v15:Notify({Title = "Exclusion List", Content = username .. " is already in the list.", Duration = 3});
+            end
+        end
+    end
+});
+
+-- NEW: Button to remove username from exclusion list
+exclusionSection:AddButton("RemoveUsernameButton", {
+    Title = "Remove from Exclusion List",
+    Callback = function()
+        local username = usernameInputBox.Value;
+        if username and username ~= "" then
+            local lowerCaseUsername = string.lower(username);
+            local foundIndex = nil;
+            for i, v in ipairs(excludedUsernames) do
+                if v == lowerCaseUsername then
+                    foundIndex = i;
+                    break;
+                end
+            end
+            if foundIndex then
+                table.remove(excludedUsernames, foundIndex);
+                v15:Notify({Title = "Exclusion List", Content = username .. " removed.", Duration = 3});
+                usernameInputBox:SetValue(""); -- Clear the input box
+            else
+                v15:Notify({Title = "Exclusion List", Content = username .. " not found in the list.", Duration = 3});
+            end
+        end
+    end
+});
 
 -- Player count display setup: Templates for labels
 -- Renamed label templates for consistency
@@ -203,6 +264,12 @@ local function findBestTarget()
         if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
             local targetTeamGroup = getTeamGroup(targetTeamName);
+            local targetPlayerName = string.lower(targetPlayer.Name); -- Get target's name in lowercase
+
+            -- NEW: Check if the target player's username is in the excludedUsernames list
+            if table.find(excludedUsernames, targetPlayerName) then
+                continue; -- Skip this player if their username is excluded
+            end
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
