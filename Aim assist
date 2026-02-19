@@ -300,22 +300,105 @@ local function findBestTarget()
             if (disableForGOC and targetTeamGroup == "GOC") then
                 continue;
             end
+local function findBestTarget()
+    local bestTargetPart = nil;
+    local minFovDistance = v10;
+    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
 
-            if targetTeamName == "SCP" then
-                if not playerHasItems(targetPlayer) then continue; end
+    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
+    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
+    local gocTeamNames = {"Global Occult Coalition"};
+
+    local currentFoundationCount = 0
+    local currentCounterforcesCount = 0
+    local currentAnomaliesCount = 0
+    local currentGOCCount = 0
+
+    local localPlayerTeamName = v5.Team and v5.Team.Name or "";
+    local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
+
+
+    for _, targetPlayer in ipairs(v1:GetPlayers()) do
+        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
+            local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
+            local targetTeamGroup = getTeamGroup(targetTeamName);
+            local targetPlayerName = string.lower(targetPlayer.Name);
+
+            if table.find(excludedUsernames, targetPlayerName) then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Blacklist.");
+                continue;
             end
 
-            if (v14 and (not isAlive)) then -- v14 (DeadCheck) is always ON now
+            local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
+            local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
+
+            if isAlive then
+                if targetTeamGroup == "Foundation" then
+                    currentFoundationCount = currentFoundationCount + 1
+                elseif targetTeamGroup == "Counter-forces" then
+                    currentCounterforcesCount = currentCounterforcesCount + 1
+                elseif targetTeamGroup == "Anomalies" then
+                    currentAnomaliesCount = currentAnomaliesCount + 1
+                elseif targetTeamGroup == "GOC" then
+                    currentGOCCount = currentGOCCount + 1
+                end
+            end
+
+            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to same group.");
+                continue;
+            end
+
+            if v13 and (targetTeamName == localPlayerTeamName) then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Team Check.");
+                continue;
+            end
+
+            if (disableForFoundation and targetTeamGroup == "Foundation") then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Foundation toggle.");
+                continue;
+            end
+            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Counter-forces toggle.");
+                continue;
+            end
+            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Anomalies toggle.");
+                continue;
+            end
+            if (disableForGOC and targetTeamGroup == "GOC") then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to GOC toggle.");
+                continue;
+            end
+
+            if targetTeamName == "SCP" then
+                if not playerHasItems(targetPlayer) then
+                    print("DEBUG: Skipped " .. targetPlayer.Name .. " (SCP, no items).");
+                    continue;
+                end
+            end
+
+            if (v14 and (not isAlive)) then
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " (Dead Check).");
                 continue;
             end
 
             local targetPart = targetPlayer.Character[v12];
+            if not targetPart then
+                 print("DEBUG: Skipped " .. targetPlayer.Name .. ", target part " .. v12 .. " not found.");
+                 continue;
+            end
+
             local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
 
             if isOnScreen then
-                if v48 and not hasLineOfSight(v4, targetPart) then -- v48 (WallCheck) is always ON now
+                if v48 and not hasLineOfSight(v4, targetPart) then
+                    print("DEBUG: Skipped " .. targetPlayer.Name .. " (Wall Check).");
                     continue
                 end
+                
+                print("DEBUG: " .. targetPlayer.Name .. " is visible and passed all checks.");
 
                 local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
                 local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
@@ -323,8 +406,13 @@ local function findBestTarget()
                 if (fovDistance < minFovDistance) then
                     minFovDistance = fovDistance;
                     bestTargetPart = targetPart;
+                    print("DEBUG: Best target candidate updated to " .. targetPlayer.Name);
                 end
+            else
+                print("DEBUG: Skipped " .. targetPlayer.Name .. " (Not on screen).");
             end
+        else
+            print("DEBUG: Skipped " .. targetPlayer.Name .. " (Invalid character or target part " .. v12 .. " missing).");
         end
     end
 
@@ -342,7 +430,11 @@ local function findBestTarget()
         local labelGOC = currentScreenGui:FindFirstChild("GOCCount")
         if labelGOC then labelGOC.Text = tostring(currentGOCCount) end
     end
-
+    if bestTargetPart then
+        print("DEBUG: findBestTarget returning " .. bestTargetPart.Parent.Name);
+    else
+        print("DEBUG: findBestTarget returning nil (No target found).");
+    end
     return bestTargetPart;
 end
 
