@@ -194,6 +194,7 @@ local function hasLineOfSight(camera, targetPart)
 
     if raycastResult then
         local hitInstance = raycastResult.Instance
+        print("Raycast hit for " .. targetPart.Parent.Name .. ": " .. hitInstance.Name .. " (Expected: " .. targetPart.Name .. ")"); -- DEBUG PRINT
         if hitInstance == targetPart or (targetPart.Parent and hitInstance:IsDescendantOf(targetPart.Parent)) then
             return true
         else
