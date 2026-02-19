@@ -345,6 +345,89 @@ local function findBestTarget()
         -- Update label text assignments with new names
         local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
         if labelFoundation then labelFoundation.Text = tostring(current
+local function findBestTarget()
+    local bestTargetPart = nil;
+    local minFovDistance = v10;
+    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
+
+    -- Define team names directly here for clarity in this function's scope
+    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
+    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
+    local gocTeamNames = {"Global Occult Coalition"};
+
+    local currentFoundationCount = 0
+    local currentCounterforcesCount = 0
+    local currentAnomaliesCount = 0
+    local currentGOCCount = 0
+
+    local localPlayerTeamName = v5.Team and v5.Team.Name or "";
+    local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
+
+
+    for _, targetPlayer in ipairs(v1:GetPlayers()) do
+        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
+            local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
+            local targetTeamGroup = getTeamGroup(targetTeamName);
+            local targetPlayerName = string.lower(targetPlayer.Name); -- Get target's name in lowercase
+
+            local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
+            local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
+
+            if isAlive then
+                -- Update counts with new names
+                if targetTeamGroup == "Foundation" then
+                    currentFoundationCount = currentFoundationCount + 1
+                elseif targetTeamGroup == "Counter-forces" then
+                    currentCounterforcesCount = currentCounterforcesCount + 1
+                elseif targetTeamGroup == "Anomalies" then
+                    currentAnomaliesCount = currentAnomaliesCount + 1
+                elseif targetTeamGroup == "GOC" then
+                    currentGOCCount = currentGOCCount + 1
+                end
+            end
+
+            -- NEW: Check if the target player's username is in the excludedUsernames list
+            if table.find(excludedUsernames, targetPlayerName) then
+                continue; -- Skip this player if their username is excluded
+            end
+
+            -- Layer 1: Auto-disable within my own group.
+            -- If the local player is in a known group, and the target is in the SAME group, skip this target.
+            -- This handles the Chaos Insurgency vs Class-D scenario when you are one of them.
+            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
+                continue; -- Do NOT aim at players in your own "allied" group.
+            end
+
+            -- Layer 2: Manual "Ignore Exact Team" toggle (v13)
+            if v13 and (targetTeamName == localPlayerTeamName) then
+                continue; -- Skip if "Ignore Exact Team" is ON and target is on the exact same team.
+            end
+
+            -- Layer 3: Manual "Disable for Group" toggles.
+            -- These override and prevent aiming at ANYONE in the specified group, regardless of local player's team.
+            -- Using new disable variables and group names
+            if (disableForFoundation and targetTeamGroup == "Foundation") then
+                continue;
+            end
+            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
+                continue;
+            end
+            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
+                continue;
+            end
+            if (disableForGOC and targetTeamGroup == "GOC") then
+                continue;
+            end
+
+            -- Specific handling for SCP (always skip if they don't have items)
+            -- This logic remains, but now it's AFTER the username exclusion check.
+            if targetTeamName == "SCP" then
+                if not playerHasItems(targetPlayer) then continue; end
+            end
+
+            if (v14 and targetHumanoid and (targetHumanoid.Health <= 0)) then continue; end
+
             local targetPart = targetPlayer.Character[v12];
             local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
 
