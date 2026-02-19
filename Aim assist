@@ -17,7 +17,7 @@ local disableForFoundation = false;
 local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
-local disableForSCP = false; -- NEW: Toggle for SCP
+local disableForSCP = false; -- Toggle for SCP
 
 local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 380), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
@@ -32,7 +32,7 @@ v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callba
 v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
-v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end}); -- NEW TOGGLE
+v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end});
 
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
@@ -136,17 +136,7 @@ local function hasLineOfSight(camera, targetPart)
     return true
 end
 
-local function playerHasItems(player)
-    if not player then return false end
-    local backpack = player:FindFirstChildOfClass("Backpack")
-    if backpack and #backpack:GetChildren() > 0 then return true end
-    if player.Character then
-        for _, child in ipairs(player.Character:GetChildren()) do
-            if child:IsA("Tool") then return true end
-        end
-    end
-    return false
-end
+-- Removed playerHasItems function
 
 local function getTeamGroup(teamName)
     local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
@@ -223,16 +213,12 @@ local function findBestTarget()
                 continue;
             end
             
-            -- NEW: Check for Disable for SCP toggle
+            -- Check for Disable for SCP toggle
             if (disableForSCP and targetTeamName == "SCP") then
                 continue;
             end
 
-            if targetTeamName == "SCP" then
-                if not playerHasItems(targetPlayer) then
-                    continue;
-                end
-            end
+            -- Removed the previous SCP item check here
 
             if (v14 and (not isAlive)) then
                 continue;
