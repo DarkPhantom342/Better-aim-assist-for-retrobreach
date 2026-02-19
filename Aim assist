@@ -8,99 +8,34 @@ local v5 = v1.LocalPlayer;
 local v8 = 0.1; -- Stronk (Assist Strength)
 local v9 = false; -- AimAssistToggle
 local v10 = 40; -- Aim FOV
--- Aim Mode (Fixed to CFrame - v11 is removed as it's no longer an option)
 local v12 = "HumanoidRootPart"; -- Target Part (Default to HumanoidRootPart)
 local v13 = false; -- TeamCheckToggle
 local v14 = true; -- DeadCheckToggle (Always ON)
 local v48 = true; -- WallCheckToggle (Always ON)
 
--- These variables are back to being controlled by GUI toggles, with new names
 local disableForFoundation = false;
 local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
 
--- Table to store excluded usernames
-local excludedUsernames = {};
--- Variable to hold the text input for usernames
-local usernameInputBox = nil;
+-- Blacklist variables removed
 
--- Fluent GUI setup
 local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 380), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
 v16:AddSlider("FollowSlider", {Title = "Stronk", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v20) v8 = v20 / 100; end});
 v16:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 1, Max = 100, Rounding = 0, Callback = function(v21) v10 = v21; end});
--- Aim Mode dropdown removed as it's fixed to CFrame
 v16:AddDropdown("PartDropdown", {Title = "Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v23) v12 = v23; end});
 v16:AddToggle("TeamCheckToggle", {Title = "Team Check", Default = false, Callback = function(v24) v13 = v24; end});
--- Dead Check toggle removed (always ON)
--- Wall Check toggle removed (always ON)
 
--- Reinstated manual toggles with new group names and consistent double quotes
 v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callback = function(value) disableForFoundation = value; end});
 v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
 
--- Section for Username Blacklist
-local exclusionSection = v16:AddSection("Blacklist");
+-- Blacklist section and its buttons/input removed
 
--- Text input for usernames
-usernameInputBox = exclusionSection:AddInput("UsernameInput", {
-    Title = "Username Blacklist",
-    Placeholder = "Enter username...",
-    Default = "",
-    Callback = function(value)
-        -- Placeholder for validation/action if needed
-    end
-});
-
--- Button to add username to exclusion list
-exclusionSection:AddButton("AddUsernameButton", {
-    Title = "Add to Blacklist",
-    Callback = function()
-        local username = usernameInputBox.Value;
-        if username and username ~= "" then
-            local lowerCaseUsername = string.lower(username);
-            if not table.find(excludedUsernames, lowerCaseUsername) then
-                table.insert(excludedUsernames, lowerCaseUsername);
-                v15:Notify({Title = "Blacklist", Content = username .. " added.", Duration = 3});
-                usernameInputBox:SetValue(""); -- Clear the input box
-            else
-                v15:Notify({Title = "Blacklist", Content = username .. " is already in the list.", Duration = 3});
-            end
-        end
-    end
-});
-
--- Button to remove username from exclusion list
-exclusionSection:AddButton("RemoveUsernameButton", {
-    Title = "Remove from Blacklist",
-    Callback = function()
-        local username = usernameInputBox.Value;
-        if username and username ~= "" then
-            local lowerCaseUsername = string.lower(username);
-            local foundIndex = nil;
-            for i, v in ipairs(excludedUsernames) do
-                if v == lowerCaseUsername then
-                    foundIndex = i;
-                    break;
-                end
-            end
-            if foundIndex then
-                table.remove(excludedUsernames, foundIndex);
-                v15:Notify({Title = "Blacklist", Content = username .. " removed.", Duration = 3});
-                usernameInputBox:SetValue(""); -- Clear the input box
-            else
-                v15:Notify({Title = "Blacklist", Content = username .. " not found in the list.", Duration = 3});
-            end
-        end
-    end
-});
-
--- Player count display setup: Templates for labels
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
 foundationLabelTemplate.TextColor3 = Color3.fromRGB(0, 0, 139)
@@ -261,74 +196,7 @@ local function findBestTarget()
             local targetTeamGroup = getTeamGroup(targetTeamName);
             local targetPlayerName = string.lower(targetPlayer.Name);
 
-            if table.find(excludedUsernames, targetPlayerName) then
-                continue;
-            end
-
-            local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
-            local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
-
-            if isAlive then
-                if targetTeamGroup == "Foundation" then
-                    currentFoundationCount = currentFoundationCount + 1
-                elseif targetTeamGroup == "Counter-forces" then
-                    currentCounterforcesCount = currentCounterforcesCount + 1
-                elseif targetTeamGroup == "Anomalies" then
-                    currentAnomaliesCount = currentAnomaliesCount + 1
-                elseif targetTeamGroup == "GOC" then
-                    currentGOCCount = currentGOCCount + 1
-                end
-            end
-
-            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
-                continue;
-            end
-
-            if v13 and (targetTeamName == localPlayerTeamName) then
-                continue;
-            end
-
-            if (disableForFoundation and targetTeamGroup == "Foundation") then
-                continue;
-            end
-            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
-                continue;
-            end
-            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
-                continue;
-            end
-            if (disableForGOC and targetTeamGroup == "GOC") then
-                continue;
-            end
-local function findBestTarget()
-    local bestTargetPart = nil;
-    local minFovDistance = v10;
-    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
-
-    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
-    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
-    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
-    local gocTeamNames = {"Global Occult Coalition"};
-
-    local currentFoundationCount = 0
-    local currentCounterforcesCount = 0
-    local currentAnomaliesCount = 0
-    local currentGOCCount = 0
-
-    local localPlayerTeamName = v5.Team and v5.Team.Name or "";
-    local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
-
-
-    for _, targetPlayer in ipairs(v1:GetPlayers()) do
-        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
-            local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
-            local targetTeamGroup = getTeamGroup(targetTeamName);
-            local targetPlayerName = string.lower(targetPlayer.Name);
-
-            if table.find(excludedUsernames, targetPlayerName) then
-                print("DEBUG: Skipped " .. targetPlayer.Name .. " due to Blacklist.");
-                continue;
-            end
+            -- Blacklist check removed
 
             local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
             local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
@@ -437,7 +305,6 @@ local function findBestTarget()
     end
     return bestTargetPart;
 end
-
 
 v2.RenderStepped:Connect(function()
     if v9 then
