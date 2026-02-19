@@ -437,7 +437,6 @@ local function findBestTarget()
     end
     return bestTargetPart;
 end
-
 v2.RenderStepped:Connect(function()
     if v9 then
         local target = findBestTarget();
