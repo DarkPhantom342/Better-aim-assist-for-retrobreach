@@ -141,7 +141,7 @@ end
 local function getTeamGroup(teamName)
     local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
     local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
-    local anomaliesTeamNames = {"Serpent's Hand", "SCP"};
+    local anomaliesTeamNames = {"Serpents Hand", "SCP"}; -- Corrected from "Serpent's Hand" to "Serpents Hand"
     local gocTeamNames = {"Global Occult Coalition"};
 
     if teamName then
