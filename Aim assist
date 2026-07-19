@@ -5,6 +5,14 @@ local v3 = game:GetService("UserInputService");
 local v4 = workspace.CurrentCamera;
 local v5 = v1.LocalPlayer;
 
+-- SCP-268 Configuration
+local TARGET_NAME = "SCP-268"
+local INTERACT_KEY = Enum.KeyCode.E
+local TIMES_TO_PRESS_E = 3
+local DELAY_BETWEEN_PRESSES = 0.3
+local REACH_DISTANCE = 5
+local AUTO_RUN_ONLY_CLASS_D = true -- Only auto-run when Class-D
+
 local v8 = 0.1; -- Stronk (Assist Strength)
 local v9 = false; -- AimAssistToggle
 local v10 = 40; -- Aim FOV
@@ -19,7 +27,55 @@ local disableForAnomalies = false;
 local disableForGOC = false;
 local disableForSCP = false; -- Toggle for SCP
 
-local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 380), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
+-- SCP-268 Functions
+local function findItem()
+    for _, descendant in ipairs(workspace:GetDescendants()) do
+        if descendant:IsA("BasePart") and descendant.Name == TARGET_NAME then
+            return descendant
+        end
+    end
+    return nil
+end
+
+local function run268Logic()
+    local Character = v5.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local HRP = Character.HumanoidRootPart
+    local OriginalPosition = HRP.Position
+    
+    local item = findItem()
+    if not item then
+        return
+    end
+    
+    local itemPos = item.Position
+    HRP.CFrame = CFrame.new(itemPos + Vector3.new(REACH_DISTANCE, 0, 0))
+    
+    task.wait(0.5)
+    
+    for i = 1, TIMES_TO_PRESS_E do
+        v3:SendKeyEvent(true, INTERACT_KEY, false, game)
+        task.wait(0.05)
+        v3:SendKeyEvent(false, INTERACT_KEY, false, game)
+        task.wait(DELAY_BETWEEN_PRESSES)
+    end
+    
+    if OriginalPosition then
+        HRP.CFrame = CFrame.new(OriginalPosition)
+    end
+end
+
+-- Auto-run ONLY if you are Class-D
+task.spawn(function()
+    while task.wait(2) do -- Check every 2 seconds
+        if AUTO_RUN_ONLY_CLASS_D and v5.Team and v5.Team.Name == "Class-D" then
+            run268Logic()
+        end
+    end
+end)
+
+local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 410), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
@@ -33,6 +89,10 @@ v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false,
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
 v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end});
+
+-- 268 Button
+v16:AddButton({Title = "268", Description = "Teleport to SCP-268, press E then return", Callback = run268Logic})
+
 
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
@@ -136,12 +196,10 @@ local function hasLineOfSight(camera, targetPart)
     return true
 end
 
--- Removed playerHasItems function
-
 local function getTeamGroup(teamName)
     local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
     local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
-    local anomaliesTeamNames = {"Serpents Hand", "SCP"}; -- Corrected from "Serpent's Hand" to "Serpents Hand"
+    local anomaliesTeamNames = {"Serpents Hand", "SCP"};
     local gocTeamNames = {"Global Occult Coalition"};
 
     if teamName then
@@ -213,12 +271,9 @@ local function findBestTarget()
                 continue;
             end
             
-            -- Check for Disable for SCP toggle
             if (disableForSCP and targetTeamName == "SCP") then
                 continue;
             end
-
-            -- Removed the previous SCP item check here
 
             if (v14 and (not isAlive)) then
                 continue;
