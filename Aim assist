@@ -103,7 +103,8 @@ end)
 local Window = v0:CreateWindow({Title = "Aim Assist + SCP-268", SubTitle = "Fixed Version", TabWidth = 150, Size = UDim2.fromOffset(450, 410), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local MainTab = Window:AddTab({Title = "Main", Icon = "target"});
 
-MainTab:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v) AimStrength = v end});
+-- ✅ FIXED: Corrected the broken callbacks
+MainTab:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v) AimAssistToggle = v end});
 MainTab:AddSlider("FollowSlider", {Title = "Strength", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v) AimStrength = v / 100 end});
 MainTab:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 10, Max = 100, Rounding = 0, Callback = function(v) FOV = v end});
 MainTab:AddDropdown("PartDropdown", {Title = "Target Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v) TargetPart = v end});
