@@ -1,98 +1,120 @@
 local v0 = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))();
-local v1 = game:GetService("Players");
-local v2 = game:GetService("RunService");
-local v3 = game:GetService("UserInputService");
-local v4 = workspace.CurrentCamera;
-local v5 = v1.LocalPlayer;
+local Players = game:GetService("Players");
+local RunService = game:GetService("RunService");
+local UIS = game:GetService("UserInputService");
+local Workspace = game:GetService("Workspace");
+local ReplicatedStorage = game:GetService("ReplicatedStorage");
+local ServerStorage = game:GetService("ServerStorage");
+local LocalPlayer = Players.LocalPlayer;
+local Camera = Workspace.CurrentCamera;
 
--- SCP-268 Configuration
 local TARGET_NAME = "SCP-268"
 local INTERACT_KEY = Enum.KeyCode.E
 local TIMES_TO_PRESS_E = 3
-local DELAY_BETWEEN_PRESSES = 0.3
+local DELAY_BETWEEN_PRESSES = 0.4
 local REACH_DISTANCE = 5
-local AUTO_RUN_ONLY_CLASS_D = true -- Only auto-run when Class-D
+local AUTO_RAN = false
 
-local v8 = 0.1; -- Stronk (Assist Strength)
-local v9 = false; -- AimAssistToggle
-local v10 = 40; -- Aim FOV
-local v12 = "HumanoidRootPart"; -- Target Part (Default to HumanoidRootPart)
-local v13 = false; -- TeamCheckToggle
-local v14 = true; -- DeadCheckToggle (Always ON)
-local v48 = true; -- WallCheckToggle (Always ON)
-
+local AimStrength = 0.1;
+local AimAssistToggle = false;
+local FOV = 40;
+local TargetPart = "HumanoidRootPart";
+local TeamCheck = false;
+local DeadCheck = true;
+local WallCheck = true;
 local disableForFoundation = false;
 local disableForCounterforces = false;
 local disableForAnomalies = false;
 local disableForGOC = false;
-local disableForSCP = false; -- Toggle for SCP
+local disableForSCP = false;
 
--- SCP-268 Functions
+local ScanRoots = {Workspace, ReplicatedStorage, ServerStorage, Lighting, unpack(Players:GetPlayers())}
+
 local function findItem()
-    for _, descendant in ipairs(workspace:GetDescendants()) do
-        if descendant:IsA("BasePart") and descendant.Name == TARGET_NAME then
-            return descendant
+    for _, Root in ipairs(ScanRoots) do
+        if not Root or not Root:IsDescendantOf(game) then continue end
+        for _, Desc in ipairs(Root:GetDescendants()) do
+            if Desc.Name == TARGET_NAME and (Desc:IsA("BasePart") or Desc:IsA("Model") or Desc:IsA("Tool")) then
+                return Desc
+            end
         end
     end
     return nil
 end
 
-local function run268Logic()
-    local Character = v5.Character
-    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local HRP = Character.HumanoidRootPart
-    local OriginalPosition = HRP.Position
-    
-    local item = findItem()
-    if not item then
-        return
-    end
-    
-    local itemPos = item.Position
-    HRP.CFrame = CFrame.new(itemPos + Vector3.new(REACH_DISTANCE, 0, 0))
-    
-    task.wait(0.5)
-    
-    for i = 1, TIMES_TO_PRESS_E do
-        v3:SendKeyEvent(true, INTERACT_KEY, false, game)
-        task.wait(0.05)
-        v3:SendKeyEvent(false, INTERACT_KEY, false, game)
-        task.wait(DELAY_BETWEEN_PRESSES)
-    end
-    
-    if OriginalPosition then
-        HRP.CFrame = CFrame.new(OriginalPosition)
+local function GetPos(obj)
+    if obj:IsA("Model") and obj.PrimaryPart then
+        return obj.PrimaryPart.Position
+    elseif obj:IsA("Model") then
+        return obj:GetBoundingBox().Position
+    else
+        return obj.Position
     end
 end
 
--- Auto-run ONLY if you are Class-D
-task.spawn(function()
-    while task.wait(2) do -- Check every 2 seconds
-        if AUTO_RUN_ONLY_CLASS_D and v5.Team and v5.Team.Name == "Class-D" then
-            run268Logic()
-        end
+local function PressKey(key)
+    pcall(function() UIS:SendKeyEvent(true, key, false, game) end)
+    task.wait(0.12)
+    pcall(function() UIS:SendKeyEvent(false, key, false, game) end)
+end
+
+local function run268Logic()
+    local Character = LocalPlayer.Character
+    if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
+    
+    local HRP = Character.HumanoidRootPart
+    local OriginalCFrame = HRP.CFrame
+    local item = findItem()
+    if not item then return end
+
+    local TargetPos = GetPos(item)
+    HRP.CFrame = CFrame.new(TargetPos + Vector3.new(REACH_DISTANCE, 1.5, 0))
+    task.wait(0.8)
+
+    for i = 1, TIMES_TO_PRESS_E do
+        PressKey(INTERACT_KEY)
+        task.wait(DELAY_BETWEEN_PRESSES)
     end
+
+    task.wait(0.4)
+    HRP.CFrame = OriginalCFrame
+end
+
+local function CheckSpawnAndRun()
+    if AUTO_RAN then return end
+    if not LocalPlayer.Team then return end
+
+    local TeamName = LocalPlayer.Team.Name:upper()
+    local IsClassD = TeamName == "CLASS-D" or TeamName:find("CLASS%-D")
+
+    if IsClassD then
+        AUTO_RAN = true
+        task.wait(2)
+        run268Logic()
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    AUTO_RAN = false
+    task.wait(0.6)
+    CheckSpawnAndRun()
 end)
 
-local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 410), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
-local v16 = v15:AddTab({Title = "Main", Icon = "target"});
+local Window = v0:CreateWindow({Title = "Aim Assist + SCP-268", SubTitle = "Fixed Version", TabWidth = 150, Size = UDim2.fromOffset(450, 410), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
+local MainTab = Window:AddTab({Title = "Main", Icon = "target"});
 
-v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
-v16:AddSlider("FollowSlider", {Title = "Stronk", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v20) v8 = v20 / 100; end});
-v16:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 1, Max = 100, Rounding = 0, Callback = function(v21) v10 = v21; end});
-v16:AddDropdown("PartDropdown", {Title = "Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v23) v12 = v23; end});
-v16:AddToggle("TeamCheckToggle", {Title = "Team Check", Default = false, Callback = function(v24) v13 = v24; end});
+MainTab:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v) AimStrength = v end});
+MainTab:AddSlider("FollowSlider", {Title = "Strength", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v) AimStrength = v / 100 end});
+MainTab:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 10, Max = 100, Rounding = 0, Callback = function(v) FOV = v end});
+MainTab:AddDropdown("PartDropdown", {Title = "Target Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v) TargetPart = v end});
+MainTab:AddToggle("TeamCheckToggle", {Title = "Ignore Teammates", Default = false, Callback = function(v) TeamCheck = v end});
+MainTab:AddToggle("FoundationToggle", {Title = "Ignore Foundation", Default = false, Callback = function(v) disableForFoundation = v end});
+MainTab:AddToggle("CounterforcesToggle", {Title = "Ignore Counter-forces", Default = false, Callback = function(v) disableForCounterforces = v end});
+MainTab:AddToggle("AnomaliesToggle", {Title = "Ignore Anomalies/SCPs", Default = false, Callback = function(v) disableForAnomalies = v end});
+MainTab:AddToggle("GOCToggle", {Title = "Ignore GOC", Default = false, Callback = function(v) disableForGOC = v end});
+MainTab:AddToggle("SCPToggle", {Title = "Ignore SCP", Default = false, Callback = function(v) disableForSCP = v end});
 
-v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callback = function(value) disableForFoundation = value; end});
-v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
-v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
-v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
-v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end});
-
--- 268 Button
-v16:AddButton({Title = "268", Description = "Teleport to SCP-268, press E then return", Callback = run268Logic})
-
+MainTab:AddButton({Title = "📦 Trigger SCP-268 Now", Description = "Manual override for pickup", Callback = run268Logic})
 
 local foundationLabelTemplate = Instance.new("TextLabel")
 foundationLabelTemplate.Text = "0"
@@ -126,14 +148,13 @@ gocLabelTemplate.BackgroundTransparency = 1
 gocLabelTemplate.Size = UDim2.new(0, 50, 0, 20)
 gocLabelTemplate.Font = Enum.Font.SourceSansBold
 
-
 local function setupPlayerCounterGui()
-    local existingScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
+    local existingScreenGui = LocalPlayer.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if existingScreenGui then existingScreenGui:Destroy() end
 
     local newScreenGui = Instance.new("ScreenGui")
     newScreenGui.Name = "PlayerCounterDisplay"
-    newScreenGui.Parent = v5.PlayerGui
+    newScreenGui.Parent = LocalPlayer.PlayerGui
 
     local yOffset = 0.4
     local lineHeight = 0.05
@@ -162,76 +183,53 @@ local function setupPlayerCounterGui()
     currentGocLabel.Parent = newScreenGui
 end
 
-v5.CharacterAdded:Connect(function(character)
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
     setupPlayerCounterGui()
 end)
 
 setupPlayerCounterGui()
 
-
-local function hasLineOfSight(camera, targetPart)
-    local origin = camera.CFrame.Position
-    local targetPosition = targetPart.Position
-    local direction = (targetPosition - origin).Unit
-    local distance = (targetPosition - origin).Magnitude
-
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    if v5.Character then
-        raycastParams.FilterDescendantsInstances = {v5.Character}
-    else
-        raycastParams.FilterDescendantsInstances = {}
-    end
-
-    local raycastResult = workspace:Raycast(origin, direction * (distance + 1), raycastParams)
-
-    if raycastResult then
-        local hitInstance = raycastResult.Instance
-        if hitInstance == targetPart or (targetPart.Parent and hitInstance:IsDescendantOf(targetPart.Parent)) then
-            return true
-        else
-            return false
-        end
-    end
-    return true
+local function getTeamGroup(teamName)
+    local foundation = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
+    local counter = {"Class-D", "Chaos Insurgency"};
+    local anomalies = {"Serpents Hand", "SCP"};
+    local goc = {"Global Occult Coalition"};
+    if table.find(foundation, teamName) then return "Foundation"
+    elseif table.find(counter, teamName) then return "Counter-forces"
+    elseif table.find(anomalies, teamName) then return "Anomalies"
+    elseif table.find(goc, teamName) then return "GOC" end
+    return nil
 end
 
-local function getTeamGroup(teamName)
-    local foundationTeamNames = {"Mobile Task Forces", "Foundation Personnel", "Security Department"};
-    local counterforcesTeamNames = {"Class-D", "Chaos Insurgency"};
-    local anomaliesTeamNames = {"Serpents Hand", "SCP"};
-    local gocTeamNames = {"Global Occult Coalition"};
-
-    if teamName then
-        if table.find(foundationTeamNames, teamName) then
-            return "Foundation"
-        elseif table.find(counterforcesTeamNames, teamName) then
-            return "Counter-forces"
-        elseif table.find(anomaliesTeamNames, teamName) then
-            return "Anomalies"
-        elseif table.find(gocTeamNames, teamName) then
-            return "GOC"
-        end
-    end
-    return nil;
+local function hasLineOfSight(cam, part)
+    local origin = cam.CFrame.Position
+    local dir = (part.Position - origin).Unit
+    local dist = (part.Position - origin).Magnitude
+    local Params = RaycastParams.new()
+    Params.FilterType = Enum.RaycastFilterType.Exclude
+    Params.FilterDescendantsInstances = {LocalPlayer.Character}
+    local Result = Workspace:Raycast(origin, dir*(dist+1), Params)
+    if not Result then return true end
+    local Hit = Result.Instance
+    return Hit == part or Hit:IsDescendantOf(part.Parent)
 end
 
 local function findBestTarget()
     local bestTargetPart = nil;
-    local minFovDistance = v10;
-    local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
+    local minFovDistance = FOV;
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2);
 
     local currentFoundationCount = 0
     local currentCounterforcesCount = 0
     local currentAnomaliesCount = 0
     local currentGOCCount = 0
 
-    local localPlayerTeamName = v5.Team and v5.Team.Name or "";
+    local localPlayerTeamName = LocalPlayer.Team and LocalPlayer.Team.Name or "";
     local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
 
-
-    for _, targetPlayer in ipairs(v1:GetPlayers()) do
-        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if ((targetPlayer ~= LocalPlayer) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(TargetPart)) then
             local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
             local targetTeamGroup = getTeamGroup(targetTeamName);
 
@@ -250,46 +248,22 @@ local function findBestTarget()
                 end
             end
 
-            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
-                continue;
-            end
+            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then continue end
+            if TeamCheck and (targetTeamName == localPlayerTeamName) then continue end
+            if (disableForFoundation and targetTeamGroup == "Foundation") then continue end
+            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then continue end
+            if (disableForAnomalies and targetTeamGroup == "Anomalies") then continue end
+            if (disableForGOC and targetTeamGroup == "GOC") then continue end
+            if (disableForSCP and targetTeamName == "SCP") then continue end
+            if (DeadCheck and (not isAlive)) then continue end
 
-            if v13 and (targetTeamName == localPlayerTeamName) then
-                continue;
-            end
+            local targetPart = targetPlayer.Character[TargetPart];
+            if not targetPart then continue end
 
-            if (disableForFoundation and targetTeamGroup == "Foundation") then
-                continue;
-            end
-            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then
-                continue;
-            end
-            if (disableForAnomalies and targetTeamGroup == "Anomalies") then
-                continue;
-            end
-            if (disableForGOC and targetTeamGroup == "GOC") then
-                continue;
-            end
-            
-            if (disableForSCP and targetTeamName == "SCP") then
-                continue;
-            end
-
-            if (v14 and (not isAlive)) then
-                continue;
-            end
-
-            local targetPart = targetPlayer.Character[v12];
-            if not targetPart then
-                 continue;
-            end
-
-            local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
+            local worldToViewportPoint, isOnScreen = Camera:WorldToViewportPoint(targetPart.Position);
 
             if isOnScreen then
-                if v48 and not hasLineOfSight(v4, targetPart) then
-                    continue
-                end
+                if WallCheck and not hasLineOfSight(Camera, targetPart) then continue end
                 
                 local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
                 local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
@@ -302,7 +276,7 @@ local function findBestTarget()
         end
     end
 
-    local currentScreenGui = v5.PlayerGui:FindFirstChild("PlayerCounterDisplay")
+    local currentScreenGui = LocalPlayer.PlayerGui:FindFirstChild("PlayerCounterDisplay")
     if currentScreenGui then
         local labelFoundation = currentScreenGui:FindFirstChild("FoundationCount")
         if labelFoundation then labelFoundation.Text = tostring(currentFoundationCount) end
@@ -319,12 +293,15 @@ local function findBestTarget()
     return bestTargetPart;
 end
 
-v2.RenderStepped:Connect(function()
-    if v9 then
+RunService.RenderStepped:Connect(function()
+    if AimAssistToggle then
         local target = findBestTarget();
         if target then
-            local direction = (target.Position - v4.CFrame.Position).Unit;
-            v4.CFrame = v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position, v4.CFrame.Position + direction), v8);
+            local direction = (target.Position - Camera.CFrame.Position).Unit;
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction), AimStrength);
         end
     end
 end);
+
+task.wait(1.2)
+CheckSpawnAndRun()
