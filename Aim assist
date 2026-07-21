@@ -5,13 +5,12 @@ local v3 = game:GetService("UserInputService");
 local v4 = workspace.CurrentCamera;
 local v5 = v1.LocalPlayer;
 
--- SCP-268 Configuration
-local TARGET_NAME = "SCP-268"
+local TARGET_268 = "SCP-268"
+local TARGET_035 = "SCP-035"
 local INTERACT_KEY = Enum.KeyCode.E
 local TIMES_TO_PRESS_E = 3
 local DELAY_BETWEEN_PRESSES = 0.4
 local REACH_DISTANCE = 5
-local AUTO_RAN = false
 
 local v8 = 0.1;
 local v9 = false;
@@ -27,14 +26,48 @@ local disableForAnomalies = false;
 local disableForGOC = false;
 local disableForSCP = false;
 
+local ReduceRecoil = true
+local ReduceSpread = true
+local RecoilAmount = 0.3
+local SpreadScale = 0.2
+local LastCam = v4.CFrame
+
 local ScanRoots = {workspace, ReplicatedStorage, ServerStorage, Lighting, unpack(v1:GetPlayers())}
 
--- IMPROVED SCP-268 FUNCTIONS
-local function findItem()
+local Marker268 = Drawing.new("Text")
+Marker268.Text = "● SCP-268"
+Marker268.Color = Color3.new(1, 1, 0)
+Marker268.Center = true
+Marker268.Outline = true
+Marker268.Font = 2
+Marker268.Size = 18
+Marker268.ZIndex = 100
+Marker268.Transparency = 1
+Marker268.Visible = false
+
+local Marker035 = Drawing.new("Text")
+Marker035.Text = "◆ SCP-035"
+Marker035.Color = Color3.new(1, 0, 0)
+Marker035.Center = true
+Marker035.Outline = true
+Marker035.Font = 2
+Marker035.Size = 18
+Marker035.ZIndex = 100
+Marker035.Transparency = 1
+Marker035.Visible = false
+
+game:FindService("CoreGui").ChildRemoved:Connect(function(c)
+    if c == Marker268 or c == Marker035 then
+        Marker268.Visible = false
+        Marker035.Visible = false
+    end
+end)
+
+local function findItem(name)
     for _, Root in ipairs(ScanRoots) do
         if not Root or not Root:IsDescendantOf(game) then continue end
         for _, Desc in ipairs(Root:GetDescendants()) do
-            if Desc.Name == TARGET_NAME and (Desc:IsA("BasePart") or Desc:IsA("Model") or Desc:IsA("Tool")) then
+            if Desc.Name == name and (Desc:IsA("BasePart") or Desc:IsA("Model") or Desc:IsA("Tool")) then
                 return Desc
             end
         end
@@ -64,7 +97,7 @@ local function run268Logic()
     
     local HRP = Character.HumanoidRootPart
     local OriginalCFrame = HRP.CFrame
-    local item = findItem()
+    local item = findItem(TARGET_268)
     if not item then return end
 
     local TargetPos = GetPos(item)
@@ -80,28 +113,7 @@ local function run268Logic()
     HRP.CFrame = OriginalCFrame
 end
 
--- ONE-TIME SPAWN TRIGGER (no infinite loops)
-local function CheckSpawnAndRun()
-    if AUTO_RAN then return end
-    if not v5.Team then return end
-
-    local TeamName = v5.Team.Name:upper()
-    local IsClassD = TeamName == "CLASS-D" or TeamName:find("CLASS%-D")
-
-    if IsClassD then
-        AUTO_RAN = true
-        task.wait(2)
-        run268Logic()
-    end
-end
-
-v5.CharacterAdded:Connect(function()
-    AUTO_RAN = false
-    task.wait(0.3)
-    CheckSpawnAndRun()
-end)
-
-local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 410), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
+local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 500), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
@@ -115,6 +127,11 @@ v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false,
 v16:AddToggle("AnomaliesToggle", {Title = "Anomalies", Default = false, Callback = function(value) disableForAnomalies = value; end});
 v16:AddToggle("GOCToggle", {Title = "GOC", Default = false, Callback = function(value) disableForGOC = value; end});
 v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback = function(value) disableForSCP = value; end});
+
+v16:AddToggle("ReduceRecoilToggle", {Title = "Reduce Recoil", Default = true, Callback = function(v) ReduceRecoil = v end})
+v16:AddSlider("RecoilSlider", {Title = "Recoil Amount", Default = 30, Min = 0, Max = 100, Rounding = 0, Callback = function(v) RecoilAmount = v / 100 end})
+v16:AddToggle("ReduceSpreadToggle", {Title = "Reduce Spread", Default = true, Callback = function(v) ReduceSpread = v end})
+v16:AddSlider("SpreadSlider", {Title = "Spread Amount", Default = 20, Min = 0, Max = 100, Rounding = 0, Callback = function(v) SpreadScale = v / 100 end})
 
 v16:AddButton({Title = "268", Description = "Teleport to SCP-268, press E then return", Callback = run268Logic})
 
@@ -323,6 +340,20 @@ local function findBestTarget()
     return bestTargetPart;
 end
 
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", function(self, prop)
+    if not oldIndex then return rawget(self, prop) end
+    if ReduceSpread and prop == "Direction" and not checkcaller() then
+        local Class = self.ClassName
+        if Class == "Projectile" or Class == "Bullet" or Class == "Rocket" then
+            local OriginalDir = oldIndex(self, prop)
+            local PerfectDir = v4.CFrame.LookVector
+            return PerfectDir:Lerp(OriginalDir, SpreadScale)
+        end
+    end
+    return oldIndex(self, prop)
+end)
+
 v2.RenderStepped:Connect(function()
     if v9 then
         local target = findBestTarget();
@@ -331,7 +362,46 @@ v2.RenderStepped:Connect(function()
             v4.CFrame = v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position, v4.CFrame.Position + direction), v8);
         end
     end
-end);
 
-task.wait(1.2)
-CheckSpawnAndRun()
+    if ReduceRecoil then
+        local Delta = v4.CFrame * LastCam:Inverse()
+        local Yaw, Pitch = Delta:ToEulerAnglesYXZ()
+
+        if math.abs(Pitch) > 0.005 or math.abs(Yaw) > 0.005 then
+            v4.CFrame = v4.CFrame * CFrame.Angles(
+                -Pitch * (1 - RecoilAmount),
+                -Yaw   * (1 - RecoilAmount),
+                0
+            )
+        end
+    end
+    LastCam = v4.CFrame
+
+    local item268 = findItem(TARGET_268)
+    if item268 then
+        local pos = GetPos(item268)
+        local w2s = v4:WorldToViewportPoint(pos)
+        if w2s.Z > 0 then
+            Marker268.Position = Vector2.new(w2s.X, w2s.Y)
+            Marker268.Visible = true
+        else
+            Marker268.Visible = false
+        end
+    else
+        Marker268.Visible = false
+    end
+
+    local item035 = findItem(TARGET_035)
+    if item035 then
+        local pos = GetPos(item035)
+        local w2s = v4:WorldToViewportPoint(pos)
+        if w2s.Z > 0 then
+            Marker035.Position = Vector2.new(w2s.X, w2s.Y - 25)
+            Marker035.Visible = true
+        else
+            Marker035.Visible = false
+        end
+    else
+        Marker035.Visible = false
+    end
+end);
