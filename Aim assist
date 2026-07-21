@@ -12,9 +12,9 @@ local TIMES_TO_PRESS_E = 3
 local DELAY_BETWEEN_PRESSES = 0.4
 local REACH_DISTANCE = 5
 
-local v8 = 0.1;
+local v8 = 0.15;
 local v9 = false;
-local v10 = 40;
+local v10 = 80;
 local v12 = "HumanoidRootPart";
 local v13 = false;
 local v14 = true;
@@ -115,10 +115,10 @@ local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidt
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
-v16:AddSlider("FollowSlider", {Title = "Stronk", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v20) v8 = v20 / 100; end});
-v16:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 10, Max = 100, Rounding = 0, Callback = function(v21) v10 = v26; end});
-v16:AddDropdown("PartDropdown", {Title = "Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v23) v12 = v23; end});
-v16:AddToggle("TeamCheckToggle", {Title = "Team Check", Default = false, Callback = function(v24) v13 = v24; end});
+v16:AddSlider("FollowSlider", {Title = "Smoothness", Default = 15, Min = 1, Max = 50, Rounding = 0, Callback = function(v20) v8 = v20 / 100; end});
+v16:AddSlider("FOVSlider", {Title = "FOV Range", Default = 80, Min = 10, Max = 200, Rounding = 0, Callback = function(v21) v10 = v21; end});
+v16:AddDropdown("PartDropdown", {Title = "Aim At", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v23) v12 = v23; end});
+v16:AddToggle("TeamCheckToggle", {Title = "Ignore Team", Default = true, Callback = function(v24) v13 = v24; end});
 
 v16:AddToggle("FoundationToggle", {Title = "Foundation", Default = false, Callback = function(value) disableForFoundation = value; end});
 v16:AddToggle("CounterforcesToggle", {Title = "Counter-forces", Default = false, Callback = function(value) disableForCounterforces = value; end});
@@ -254,8 +254,9 @@ end
 
 local function findBestTarget()
     local bestTargetPart = nil;
-    local minFovDistance = v10;
+    local bestDistance = math.huge
     local screenCenter = Vector2.new(v4.ViewportSize.X / 2, v4.ViewportSize.Y / 2);
+    local fovRadius = v10
 
     local currentFoundationCount = 0
     local currentCounterforcesCount = 0
@@ -266,56 +267,40 @@ local function findBestTarget()
     local localPlayerTeamGroup = getTeamGroup(localPlayerTeamName);
 
     for _, targetPlayer in ipairs(v1:GetPlayers()) do
-        if ((targetPlayer ~= v5) and targetPlayer.Character and targetPlayer.Character:FindFirstChild(v12)) then
-            local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
-            local targetTeamGroup = getTeamGroup(targetTeamName);
+        if targetPlayer == v5 then continue end
+        if not targetPlayer.Character then continue end
+        local TargetPart = targetPlayer.Character:FindFirstChild(v12)
+        if not TargetPart then continue end
 
-            local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
-            local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
+        local targetTeamName = targetPlayer.Team and targetPlayer.Team.Name or "";
+        local targetTeamGroup = getTeamGroup(targetTeamName);
 
-            if isAlive then
-                if targetTeamGroup == "Foundation" then
-                    currentFoundationCount = currentFoundationCount + 1
-                elseif targetTeamGroup == "Counter-forces" then
-                    currentCounterforcesCount = currentCounterforcesCount + 1
-                elseif targetTeamGroup == "Anomalies" then
-                    currentAnomaliesCount = currentAnomaliesCount + 1
-                elseif targetTeamGroup == "GOC" then
-                    currentGOCCount = currentGOCCount + 1
-                end
-            end
+        local targetHumanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid");
+        local isAlive = targetHumanoid and (targetHumanoid.Health > 0);
+        if not isAlive then continue end
 
-            if localPlayerTeamGroup and targetTeamGroup and (localPlayerTeamGroup == targetTeamGroup) then
-                continue;
-            end
+        if v13 and localPlayerTeamGroup and targetTeamGroup == localPlayerTeamGroup then
+            continue;
+        end
 
-            if v13 and (targetTeamName == localPlayerTeamName) then
-                continue;
-            end
+        if disableForFoundation and targetTeamGroup == "Foundation" then continue end
+        if disableForCounterforces and targetTeamGroup == "Counter-forces" then continue end
+        if disableForAnomalies and targetTeamGroup == "Anomalies" then continue end
+        if disableForGOC and targetTeamGroup == "GOC" then continue end
+        if disableForSCP and targetTeamGroup == "SCP" then continue end
 
-            if (disableForFoundation and targetTeamGroup == "Foundation") then continue end
-            if (disableForCounterforces and targetTeamGroup == "Counter-forces") then continue end
-            if (disableForAnomalies and targetTeamGroup == "Anomalies") then continue end
-            if (disableForGOC and targetTeamGroup == "GOC") then continue end
-            if (disableForSCP and targetTeamName == "SCP") then continue end
-            if (v14 and (not isAlive)) then continue end
+        if targetTeamGroup == "Foundation" then currentFoundationCount += 1
+        elseif targetTeamGroup == "Counter-forces" then currentCounterforcesCount += 1
+        elseif targetTeamGroup == "Anomalies" then currentAnomaliesCount += 1
+        elseif targetTeamGroup == "GOC" then currentGOCCount += 1 end
 
-            local targetPart = targetPlayer.Character[v12];
-            if not targetPart then continue end
+        local w2s, onScreen = v4:WorldToViewportPoint(TargetPart.Position)
+        if not onScreen then continue end
 
-            local worldToViewportPoint, isOnScreen = v4:WorldToViewportPoint(targetPart.Position);
-
-            if isOnScreen then
-                if v48 and not hasLineOfSight(v4, targetPart) then continue end
-                
-                local targetScreenPosition = Vector2.new(worldToViewportPoint.X, worldToViewportPoint.Y);
-                local fovDistance = (targetScreenPosition - screenCenter).Magnitude;
-
-                if (fovDistance < minFovDistance) then
-                    minFovDistance = fovDistance;
-                    bestTargetPart = targetPart;
-                end
-            end
+        local distToCenter = (Vector2.new(w2s.X, w2s.Y) - screenCenter).Magnitude
+        if distToCenter < fovRadius and distToCenter < bestDistance then
+            bestDistance = distToCenter
+            bestTargetPart = TargetPart
         end
     end
 
@@ -337,11 +322,14 @@ local function findBestTarget()
 end
 
 v2.RenderStepped:Connect(function()
+    -- === FIXED AIM ASSIST LOGIC ===
     if v9 then
-        local target = findBestTarget();
-        if target then
-            local direction = (target.Position - v4.CFrame.Position).Unit;
-            v4.CFrame = v4.CFrame:Lerp(CFrame.new(v4.CFrame.Position, v4.CFrame.Position + direction), v8);
+        local Target = findBestTarget()
+        if Target then
+            local TargetPos = Target.Position
+            local CamPos = v4.CFrame.Position
+            local DesiredLook = CFrame.new(CamPos, TargetPos)
+            v4.CFrame = v4.CFrame:Lerp(DesiredLook, v8)
         end
     end
 
