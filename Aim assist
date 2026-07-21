@@ -27,9 +27,7 @@ local disableForGOC = false;
 local disableForSCP = false;
 
 local ReduceRecoil = true
-local ReduceSpread = true
 local RecoilAmount = 0.3
-local SpreadScale = 0.2
 local LastCam = v4.CFrame
 
 local ScanRoots = {workspace, ReplicatedStorage, ServerStorage, Lighting, unpack(v1:GetPlayers())}
@@ -113,7 +111,7 @@ local function run268Logic()
     HRP.CFrame = OriginalCFrame
 end
 
-local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 500), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
+local v15 = v0:CreateWindow({Title = "Aim Assist", SubTitle = "by AGTV", TabWidth = 150, Size = UDim2.fromOffset(450, 460), Acrylic = false, Theme = "Dark", MinimizeKey = Enum.KeyCode.Insert});
 local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
@@ -130,8 +128,6 @@ v16:AddToggle("SCPToggle", {Title = "Disable for SCP", Default = false, Callback
 
 v16:AddToggle("ReduceRecoilToggle", {Title = "Reduce Recoil", Default = true, Callback = function(v) ReduceRecoil = v end})
 v16:AddSlider("RecoilSlider", {Title = "Recoil Amount", Default = 30, Min = 0, Max = 100, Rounding = 0, Callback = function(v) RecoilAmount = v / 100 end})
-v16:AddToggle("ReduceSpreadToggle", {Title = "Reduce Spread", Default = true, Callback = function(v) ReduceSpread = v end})
-v16:AddSlider("SpreadSlider", {Title = "Spread Amount", Default = 20, Min = 0, Max = 100, Rounding = 0, Callback = function(v) SpreadScale = v / 100 end})
 
 v16:AddButton({Title = "268", Description = "Teleport to SCP-268, press E then return", Callback = run268Logic})
 
@@ -339,20 +335,6 @@ local function findBestTarget()
     end
     return bestTargetPart;
 end
-
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", function(self, prop)
-    if not oldIndex then return rawget(self, prop) end
-    if ReduceSpread and prop == "Direction" and not checkcaller() then
-        local Class = self.ClassName
-        if Class == "Projectile" or Class == "Bullet" or Class == "Rocket" then
-            local OriginalDir = oldIndex(self, prop)
-            local PerfectDir = v4.CFrame.LookVector
-            return PerfectDir:Lerp(OriginalDir, SpreadScale)
-        end
-    end
-    return oldIndex(self, prop)
-end)
 
 v2.RenderStepped:Connect(function()
     if v9 then
