@@ -116,7 +116,7 @@ local v16 = v15:AddTab({Title = "Main", Icon = "target"});
 
 v16:AddToggle("AimAssistToggle", {Title = "Aim Assist", Default = false, Callback = function(v18) v9 = v18; end});
 v16:AddSlider("FollowSlider", {Title = "Stronk", Default = 10, Min = 1, Max = 50, Rounding = 0, Callback = function(v20) v8 = v20 / 100; end});
-v16:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 10, Max = 100, Rounding = 0, Callback = function(v21) v10 = v21; end});
+v16:AddSlider("FOVSlider", {Title = "FOV", Default = 40, Min = 10, Max = 100, Rounding = 0, Callback = function(v21) v10 = v26; end});
 v16:AddDropdown("PartDropdown", {Title = "Part", Values = {"Head", "HumanoidRootPart"}, Default = "HumanoidRootPart", Callback = function(v23) v12 = v23; end});
 v16:AddToggle("TeamCheckToggle", {Title = "Team Check", Default = false, Callback = function(v24) v13 = v24; end});
 
